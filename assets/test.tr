@@ -1,8 +1,16 @@
 ; TinyRAM V=1.00 W=5 K=3
 
-;Test
+; Preamble
+; This codes does the following:
+; 1 - Copies the tape into memory in reverse order, starting
+;     from position 2 in memory  
+;
+; 2 - Sets the memory at position 1 to be n+1, where n is the
+;     length of the tape 
+;
+; 3 - Go to _main
 
-_main:
+_preamble:
 store 0, r0
 mov r0, 1
 read r1, 0
@@ -11,5 +19,8 @@ add r0, r0, 1
 store r0, r1
 jmp 2
 store 1, r0
+jmp _main
 
-; Comment
+_main:
+; No error
+answer 0

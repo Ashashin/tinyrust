@@ -1,5 +1,4 @@
-use color_eyre::{Help, Report};
-use eyre::WrapErr;
+use color_eyre::{eyre::eyre, Help, Report};
 use std::path::PathBuf;
 use structopt::StructOpt;
 use tracing::info;
@@ -54,5 +53,13 @@ fn main() -> Result<(), Report> {
 
     // Run program
     info!("All good to go!");
-    tinyvm.run()
+
+    match tinyvm.run()? {
+        0 => {
+            info!("TinyVM terminated without error");
+            tinyvm.display_state();
+            Ok(())
+        }
+        x => Err(eyre!("Program terminated with error code {}", x)),
+    }
 }

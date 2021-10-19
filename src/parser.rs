@@ -3,9 +3,7 @@ use std::{
     fmt::Debug,
     fs::File,
     io::{self, BufRead},
-    num::{ParseFloatError, ParseIntError},
     path::Path,
-    str::FromStr,
 };
 
 use crate::vm::TinyVM;
@@ -19,9 +17,9 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use tracing::info;
 
-#[derive(Debug)]
-struct Register {
-    index: u16,
+#[derive(Debug, Clone)]
+pub struct Register {
+    pub index: u16,
 }
 
 #[derive(Debug)]
@@ -44,14 +42,14 @@ impl Params {
     }
 }
 
-#[derive(Debug)]
-enum Argument {
+#[derive(Debug, Clone)]
+pub enum Argument {
     Imm(i64),
     Reg(Register),
     Label(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Instruction {
     And(Register, Register, Argument),
     Or(Register, Register, Argument),
@@ -96,7 +94,17 @@ impl Parser {
     {
         info!("Loading tape from {:?}", filename);
 
-        unimplemented!("Loading tape.")
+        let mut lines = Self::read_lines(filename)?;
+        let mut tape = vec![];
+        for (idx, line) in lines.enumerate() {
+            let line = line.unwrap();
+            let value = line.parse::<u64>()? as usize;
+            tape.push(value)
+        }
+
+        info!("Tape loaded with {} entries", tape.len());
+
+        Ok(tape)
     }
 
     pub fn load_program<P>(filename: P) -> Result<TinyVM, Report>
@@ -291,6 +299,7 @@ impl Parser {
                     "jmp" => Instruction::Jmp(arg),
                     "cjmp" => Instruction::CJmp(arg),
                     "cnjmp" => Instruction::CnJmp(arg),
+                    "answer" => Instruction::Answer(arg),
                     _ => return None,
                 }
             }
@@ -339,8 +348,7 @@ impl Parser {
             3 => {
                 let arg1 = Self::parse_register(&operands[0]);
                 let arg2 = Self::parse_register(&operands[1]);
-
-                let arg3 = Self::parse_argument(&operands[1]);
+                let arg3 = Self::parse_argument(&operands[2]);
 
                 if arg1.is_none() || arg2.is_none() || arg3.is_none() {
                     return None;
