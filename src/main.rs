@@ -1,6 +1,8 @@
 use color_eyre::{Help, Report};
 use eyre::WrapErr;
-use tracing::{info, instrument};
+use std::path::PathBuf;
+use structopt::StructOpt;
+use tracing::info;
 use tracing_error::ErrorLayer;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
@@ -9,6 +11,21 @@ mod parser;
 mod vm;
 
 use parser::Parser;
+
+#[derive(Debug, StructOpt)]
+struct Opt {
+    /// Program file
+    #[structopt(parse(from_os_str))]
+    program_file: PathBuf,
+
+    /// Tape file
+    #[structopt(short, parse(from_os_str))]
+    tape_file: Option<PathBuf>,
+
+    /// Output file
+    #[structopt(short, default_value = "cert.out")]
+    outfile: String,
+}
 
 fn setup() {
     let fmt_layer = fmt::layer().with_target(false);
@@ -23,12 +40,19 @@ fn setup() {
         .init();
 }
 fn main() -> Result<(), Report> {
+    // General setup
     setup();
+    let opt = Opt::from_args();
 
-    let mut tinyvm = Parser::load_program("assets/test.tr")?;
+    // Load program
+    let mut tinyvm = Parser::load_program(opt.program_file)?;
 
-    tinyvm.load_tape(vec![1, 2, 3]);
-    tinyvm.run();
+    // Load tape
+    if let Some(filename) = opt.tape_file {
+        tinyvm.load_tape(Parser::load_tape_file(filename)?);
+    }
 
-    Ok(())
+    // Run program
+    info!("All good to go!");
+    tinyvm.run()
 }

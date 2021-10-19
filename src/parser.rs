@@ -17,7 +17,7 @@ use color_eyre::{
 
 use lazy_static::lazy_static;
 use regex::Regex;
-use tracing::{info, instrument};
+use tracing::info;
 
 #[derive(Debug)]
 struct Register {
@@ -90,6 +90,15 @@ pub enum Instruction {
 pub struct Parser;
 
 impl Parser {
+    pub fn load_tape_file<P>(filename: P) -> Result<Vec<usize>, Report>
+    where
+        P: AsRef<Path> + Debug,
+    {
+        info!("Loading tape from {:?}", filename);
+
+        unimplemented!("Loading tape.")
+    }
+
     pub fn load_program<P>(filename: P) -> Result<TinyVM, Report>
     where
         P: AsRef<Path> + Debug,
@@ -132,8 +141,6 @@ impl Parser {
         // Resolution
         let resolved_labels = Self::check_and_resolve_labels(&labels)?;
         Self::check_instructions(params, &instructions, &resolved_labels)?;
-
-        info!("All good to go!");
 
         Ok(TinyVM::new(params, instructions, resolved_labels))
     }

@@ -2,7 +2,7 @@ use crate::parser::{Instruction, Label, Params};
 
 use std::collections::HashMap;
 
-use tracing::{info, instrument};
+use tracing::info;
 
 use color_eyre::{
     eyre::{eyre, WrapErr},
@@ -67,10 +67,11 @@ impl TinyVM {
         todo!("Fetch-decode-execute")
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> Result<(), Report> {
         self.start();
         while self.state.running {
             self.step();
         }
+        Ok(())
     }
 }
