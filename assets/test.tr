@@ -1,0 +1,15 @@
+; TinyRAM V=1.00 W=5 K=3
+
+;Test
+
+_main:
+store 0, r0
+mov r0, 1
+read r1, 0
+cjmp 7
+add r0, r0, 1
+store r0, r1
+jmp 2
+store 1, r0
+
+; Comment
