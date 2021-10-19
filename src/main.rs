@@ -1,4 +1,4 @@
-use color_eyre::{eyre::eyre, Help, Report};
+use color_eyre::{eyre::eyre, Report};
 use std::path::PathBuf;
 use structopt::StructOpt;
 use tracing::info;

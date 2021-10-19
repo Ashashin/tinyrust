@@ -94,9 +94,9 @@ impl Parser {
     {
         info!("Loading tape from {:?}", filename);
 
-        let mut lines = Self::read_lines(filename)?;
+        let lines = Self::read_lines(filename)?;
         let mut tape = vec![];
-        for (idx, line) in lines.enumerate() {
+        for (_idx, line) in lines.enumerate() {
             let line = line.unwrap();
             let value = line.parse::<u64>()? as usize;
             tape.push(value)
@@ -331,14 +331,14 @@ impl Parser {
 
                         match opcode {
                             "not" => unimplemented!(),
-                            "cmpe" => unimplemented!(),
-                            "cmpa" => unimplemented!(),
+                            "cmpe" => Instruction::CmpE(arg1, arg2),
+                            "cmpa" => Instruction::CmpA(arg1, arg2),
                             "cmpae" => unimplemented!(),
                             "cmpg" => unimplemented!(),
                             "cmpge" => unimplemented!(),
                             "mov" => Instruction::Mov(arg1, arg2),
                             "cmov" => unimplemented!(),
-                            "load" => unimplemented!(),
+                            "load" => Instruction::Load(arg1, arg2),
                             "read" => Instruction::Read(arg1, arg2),
                             _ => return None,
                         }

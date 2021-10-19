@@ -4,10 +4,7 @@ use std::collections::HashMap;
 
 use tracing::info;
 
-use color_eyre::{
-    eyre::{eyre, ErrReport},
-    Report,
-};
+use color_eyre::{eyre::eyre, Report};
 
 #[derive(Debug)]
 struct State {
@@ -118,13 +115,49 @@ impl TinyVM {
         let mut next_pc = self.state.pc + 1;
 
         match instr {
+            // Bit operations
+            Instruction::And(reg1, reg2, arg) => self.and(&reg1, &reg2, &arg),
+            Instruction::Or(reg1, reg2, arg) => self.or(&reg1, &reg2, &arg),
+            Instruction::Xor(reg1, reg2, arg) => self.xor(&reg1, &reg2, &arg),
+            Instruction::Not(reg, arg) => self.not(&reg, &arg),
+
+            // Integer operations
             Instruction::Add(reg1, reg2, arg) => self.add(&reg1, &reg2, &arg),
-            Instruction::Store(arg, reg) => self.store(&arg, &reg),
+            Instruction::Sub(reg1, reg2, arg) => self.sub(&reg1, &reg2, &arg),
+            // TODO:  MulL, UMulL, SMulL, UDiv, UMod
+
+            // Shift operations
+            // TODO: Shl, Shr
+
+            // Compare operations
+            Instruction::CmpE(reg, arg) => self.cmpe(&reg, &arg),
+            Instruction::CmpA(reg, arg) => self.cmpa(&reg, &arg),
+
+            // TODO:  CmpA, CmpAE, CmpG, CmpGE
+
+            // Move operations
             Instruction::Mov(reg, arg) => self.mov(&reg, &arg),
-            Instruction::Read(reg, arg) => self.read(&reg, &arg),
+            Instruction::CMov(reg, arg) => self.cmov(&reg, &arg),
+
+            // Jump operations
             Instruction::Jmp(arg) => next_pc = self.jmp(&arg),
             Instruction::CJmp(arg) => next_pc = self.cjmp(&arg),
-            Instruction::Answer(arg) => self.answer(&arg),
+            Instruction::CnJmp(arg) => next_pc = self.cnjmp(&arg),
+
+            // Memory operations
+            Instruction::Store(arg, reg) => self.store(&arg, &reg),
+            Instruction::Load(reg, arg) => self.load(&reg, &arg),
+
+            // Input operation
+            Instruction::Read(reg, arg) => self.read(&reg, &arg),
+
+            // Answer operation
+            Instruction::Answer(arg) => {
+                next_pc -= 1;
+                self.answer(&arg)
+            }
+
+            // Temporary
             _ => unimplemented!("Unsupported instruction: {:?}", instr),
         }
 
@@ -137,6 +170,49 @@ impl TinyVM {
             Argument::Reg(reg) => self.state.registers[reg.index as usize],
             Argument::Label(ident) => self.resolved_labels[ident as &str],
         }
+    }
+
+    fn and(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
+        let value1 = self.state.registers[reg2.index as usize];
+        let value2 = self.resolve(arg);
+
+        let result = value1 & value2;
+        let zero = result == 0;
+
+        self.state.registers[reg1.index as usize] = result;
+        self.state.flag = zero;
+    }
+
+    fn or(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
+        let value1 = self.state.registers[reg2.index as usize];
+        let value2 = self.resolve(arg);
+
+        let result = value1 | value2;
+        let zero = result == 0;
+
+        self.state.registers[reg1.index as usize] = result;
+        self.state.flag = zero;
+    }
+
+    fn xor(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
+        let value1 = self.state.registers[reg2.index as usize];
+        let value2 = self.resolve(arg);
+
+        let result = value1 ^ value2;
+        let zero = result == 0;
+
+        self.state.registers[reg1.index as usize] = result;
+        self.state.flag = zero;
+    }
+
+    fn not(&mut self, reg: &Register, arg: &Argument) {
+        let value = self.resolve(arg);
+
+        let result = !value;
+        let zero = result == 0;
+
+        self.state.registers[reg.index as usize] = result;
+        self.state.flag = zero;
     }
 
     fn add(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
@@ -153,6 +229,36 @@ impl TinyVM {
         self.state.flag = carry;
     }
 
+    fn sub(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
+        let msb_mask = 1 << (self.params.word_size - 1);
+        let value_mask = (1 << self.params.word_size) - 1;
+
+        let value1 = self.state.registers[reg2.index as usize];
+        let value2 = self.resolve(arg);
+
+        let result = (value1 - value2 + (1 << self.params.word_size)) & value_mask;
+        let carry = (result & msb_mask) > 0;
+
+        self.state.registers[reg1.index as usize] = result;
+        self.state.flag = !carry;
+    }
+
+    fn cmpe(&mut self, reg: &Register, arg: &Argument) {
+        let value1 = self.resolve(arg);
+        let value2 = self.state.registers[reg.index as usize];
+
+        let equal = value1 == value2;
+        self.state.flag = equal;
+    }
+
+    fn cmpa(&mut self, reg: &Register, arg: &Argument) {
+        let value1 = self.resolve(arg);
+        let value2 = self.state.registers[reg.index as usize];
+
+        let above = value1 < value2;
+        self.state.flag = above;
+    }
+
     fn answer(&mut self, arg: &Argument) {
         let retval = self.resolve(arg);
         self.result = retval;
@@ -165,6 +271,14 @@ impl TinyVM {
 
     fn cjmp(&mut self, arg: &Argument) -> usize {
         if !self.state.flag {
+            self.state.pc + 1
+        } else {
+            self.jmp(arg)
+        }
+    }
+
+    fn cnjmp(&mut self, arg: &Argument) -> usize {
+        if self.state.flag {
             self.state.pc + 1
         } else {
             self.jmp(arg)
@@ -200,8 +314,25 @@ impl TinyVM {
         self.state.registers[reg.index as usize] = value;
     }
 
+    fn cmov(&mut self, reg: &Register, arg: &Argument) {
+        if self.state.flag {
+            self.mov(reg, arg)
+        }
+    }
+
     fn store(&mut self, arg: &Argument, reg: &Register) {
         // Store contents of register reg at the address arg
+        let addr = self.resolve(arg);
+        let value = self.state.registers[reg.index as usize];
+
+        if self.state.memory.len() <= addr {
+            self.state.memory.resize(addr + 1, 0);
+        }
+
+        self.state.memory[addr] = value;
+    }
+
+    fn load(&mut self, reg: &Register, arg: &Argument) {
         let addr = self.resolve(arg);
         let value = self.state.registers[reg.index as usize];
 
