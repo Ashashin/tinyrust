@@ -124,16 +124,22 @@ impl TinyVM {
             // Integer operations
             Instruction::Add(reg1, reg2, arg) => self.add(&reg1, &reg2, &arg),
             Instruction::Sub(reg1, reg2, arg) => self.sub(&reg1, &reg2, &arg),
-            // TODO:  MulL, UMulL, SMulL, UDiv, UMod
+            Instruction::MulL(reg1, reg2, arg) => unimplemented!(),
+            Instruction::UMulH(reg1, reg2, arg) => unimplemented!(),
+            Instruction::SMulH(reg1, reg2, arg) => unimplemented!(),
+            Instruction::UDiv(reg1, reg2, arg) => unimplemented!(),
+            Instruction::UMod(reg1, reg2, arg) => unimplemented!(),
 
             // Shift operations
-            // TODO: Shl, Shr
+            Instruction::Shl(reg1, reg2, arg) => self.shl(&reg1, &reg2, &arg),
+            Instruction::Shr(reg1, reg2, arg) => self.shr(&reg1, &reg2, &arg),
 
             // Compare operations
             Instruction::CmpE(reg, arg) => self.cmpe(&reg, &arg),
             Instruction::CmpA(reg, arg) => self.cmpa(&reg, &arg),
-
-            // TODO:  CmpA, CmpAE, CmpG, CmpGE
+            Instruction::CmpAE(reg, arg) => self.cmpae(&reg, &arg),
+            Instruction::CmpG(reg, arg) => self.cmpg(&reg, &arg),
+            Instruction::CmpGE(reg, arg) => self.cmpge(&reg, &arg),
 
             // Move operations
             Instruction::Mov(reg, arg) => self.mov(&reg, &arg),
@@ -156,9 +162,6 @@ impl TinyVM {
                 next_pc -= 1;
                 self.answer(&arg)
             }
-
-            // Temporary
-            _ => unimplemented!("Unsupported instruction: {:?}", instr),
         }
 
         Ok(next_pc)
@@ -243,6 +246,32 @@ impl TinyVM {
         self.state.flag = !carry;
     }
 
+    fn shl(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
+        let value1 = self.resolve(arg);
+        let value2 = self.state.registers[reg2.index as usize];
+        let value_mask = (1 << self.params.word_size) - 1;
+        let msb_mask = 1 << (self.params.word_size - 1);
+
+        let result = (value2 << value1) & value_mask;
+        let carry = (result & msb_mask) > 0;
+
+        self.state.registers[reg1.index as usize] = result;
+        self.state.flag = carry;
+    }
+
+    fn shr(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
+        let value1 = self.resolve(arg);
+        let value2 = self.state.registers[reg2.index as usize];
+        let value_mask = (1 << self.params.word_size) - 1;
+        let lsb_mask = 1;
+
+        let result = (value2 >> value1) & value_mask;
+        let carry = (result & lsb_mask) > 0;
+
+        self.state.registers[reg1.index as usize] = result;
+        self.state.flag = carry;
+    }
+
     fn cmpe(&mut self, reg: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
         let value2 = self.state.registers[reg.index as usize];
@@ -256,6 +285,34 @@ impl TinyVM {
         let value2 = self.state.registers[reg.index as usize];
 
         let above = value1 < value2;
+        self.state.flag = above;
+    }
+
+    fn cmpae(&mut self, reg: &Register, arg: &Argument) {
+        let value1 = self.resolve(arg);
+        let value2 = self.state.registers[reg.index as usize];
+
+        let above = value1 <= value2;
+        self.state.flag = above;
+    }
+
+    fn to_signed(x: u64) -> i64 {
+        unsafe { std::mem::transmute::<u64, i64>(x) }
+    }
+
+    fn cmpg(&mut self, reg: &Register, arg: &Argument) {
+        let value1 = Self::to_signed(self.resolve(arg) as u64);
+        let value2 = Self::to_signed(self.state.registers[reg.index as usize] as u64);
+
+        let above = value1 < value2;
+        self.state.flag = above;
+    }
+
+    fn cmpge(&mut self, reg: &Register, arg: &Argument) {
+        let value1 = Self::to_signed(self.resolve(arg) as u64);
+        let value2 = Self::to_signed(self.state.registers[reg.index as usize] as u64);
+
+        let above = value1 <= value2;
         self.state.flag = above;
     }
 

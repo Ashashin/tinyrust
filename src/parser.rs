@@ -330,14 +330,14 @@ impl Parser {
                         let arg2 = arg2.unwrap();
 
                         match opcode {
-                            "not" => unimplemented!(),
+                            "not" => Instruction::Not(arg1, arg2),
                             "cmpe" => Instruction::CmpE(arg1, arg2),
                             "cmpa" => Instruction::CmpA(arg1, arg2),
-                            "cmpae" => unimplemented!(),
-                            "cmpg" => unimplemented!(),
-                            "cmpge" => unimplemented!(),
+                            "cmpae" => Instruction::CmpAE(arg1, arg2),
+                            "cmpg" => Instruction::CmpG(arg1, arg2),
+                            "cmpge" => Instruction::CmpGE(arg1, arg2),
                             "mov" => Instruction::Mov(arg1, arg2),
-                            "cmov" => unimplemented!(),
+                            "cmov" => Instruction::CMov(arg1, arg2),
                             "load" => Instruction::Load(arg1, arg2),
                             "read" => Instruction::Read(arg1, arg2),
                             _ => return None,
