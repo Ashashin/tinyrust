@@ -62,7 +62,7 @@ fn main() -> Result<(), Report> {
             hasher.update(std::fs::read(filename)?);
             tape
         }
-        _ => vec![19],
+        _ => vec![27],
     };
 
     // Callback to update the hash
