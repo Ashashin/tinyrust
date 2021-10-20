@@ -82,7 +82,7 @@ pub enum Instruction {
 pub struct Parser;
 
 impl Parser {
-    pub fn load_tape_file<P>(filename: P) -> Result<Vec<usize>, Report>
+    pub fn load_tape_file<P>(filename: &P) -> Result<Vec<usize>, Report>
     where
         P: AsRef<Path> + Debug,
     {
@@ -101,7 +101,7 @@ impl Parser {
         Ok(tape)
     }
 
-    pub fn load_program<P>(filename: P) -> Result<TinyVM, Report>
+    pub fn load_program<P>(filename: &P) -> Result<TinyVM, Report>
     where
         P: AsRef<Path> + Debug,
     {

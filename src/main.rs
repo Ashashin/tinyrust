@@ -48,51 +48,53 @@ fn main() -> Result<(), Report> {
     let opt = Opt::from_args();
 
     // Create VM
-    let tinyvm = create_vm(opt.program_file.clone(), opt.tape_file.clone())?;
+    let tinyvm = Parser::load_program(&opt.program_file)?;
 
     // Instantiate sha1 and add program and input tape to the hasher
     let mut hasher = Sha1::new();
 
     hasher.update(std::fs::read(opt.program_file)?);
 
-    if let Some(file) = opt.tape_file {
-        hasher.update(std::fs::read(file)?);
-    }
+    // Input handling
+    let input = match opt.tape_file {
+        Some(filename) => {
+            let tape = Parser::load_tape_file(&filename)?;
+            hasher.update(std::fs::read(filename)?);
+            tape
+        }
+        _ => vec![19],
+    };
 
     // Callback to update the hash
     let update_hash = |s: &[u8]| hasher.update(s);
 
     // Run program
-    run_vm(tinyvm, Some(update_hash))?;
+    let output = run_vm(tinyvm, input, Some(update_hash))?;
 
     // Finalize hashing and write to file
-    let result = hasher.finalize();
+    let hash = hasher.finalize();
+
+    info!("output: {:?}, hash: {:?}", output, hash);
 
     Ok(())
 }
 
-fn create_vm(program: PathBuf, tape: Option<PathBuf>) -> Result<TinyVM, Report> {
-    // Load program
-    let mut tinyvm = Parser::load_program(program)?;
-
-    // Load tape
-    if let Some(filename) = tape {
-        tinyvm.load_tape(Parser::load_tape_file(filename)?);
-    }
-
-    Ok(tinyvm)
-}
-
-fn run_vm<F>(mut tinyvm: TinyVM, callback: Option<F>) -> Result<(), Report>
+fn run_vm<F>(mut tinyvm: TinyVM, input: Vec<usize>, callback: Option<F>) -> Result<usize, Report>
 where
     F: FnMut(&[u8]),
 {
+    tinyvm.load_tape(input);
+
     info!("✨ All good to go! ✨");
     match tinyvm.run(callback)? {
         0 => {
             info!("✨ TinyVM terminated without error ✨");
             tinyvm.display_state();
-            Ok(())
+
+            match tinyvm.output() {
+                Some(&value) => Ok(value),
+                _ => Err(eyre!("No output!")),
+            }
         }
         x => Err(eyre!("🔥 Program terminated with error code {} 🔥", x)),
     }

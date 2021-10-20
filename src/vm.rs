@@ -197,6 +197,10 @@ impl TinyVM {
         Instruction::Answer(Argument::Imm(1))
     }
 
+    pub fn output(&self) -> Option<&usize> {
+        self.state.memory.first()
+    }
+
     fn and(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
