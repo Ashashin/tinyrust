@@ -3,29 +3,27 @@
 ; 1, 1, 2, 3, 5, 8, 13, etc.
 
 _setup: 
-    ; Index of the desired term 
-    mov     r0, 29
+    mov     r0, 29          ; Index of the desired term 
 
     ; Special treatment for 0 and 1
-    mov     r3, 1
-    cmpa    r0, 1
-    cnjmp   _finish
-    mov     r1, 1 
+    mov     r3, 1           ; F(0) = F(1) = 1
+    cmpa    r0, 1           ; 
+    cnjmp   _finish         ; If r0 < 1, return r3
+    mov     r1, 1   
     mov     r2, 1
     mov     r4, 2
 
 _loop:
     ; Main loop
-    add     r3, r1, r2
-    mov     r2, r1 
+    add     r3, r1, r2      ; r3 holds the result
+    mov     r2, r1          ; r1 and r2 hold previous terms
     mov     r1, r3
-    add     r4, r4, 1
-    cmpe    r4, r0
+    add     r4, r4, 1       ; r4 is the counter
+    cmpe    r4, r0          ; we repeat until r4 = r0
     cnjmp   _loop
 
 _finish:
     ; Finalisation
-    ; Result is stored as first item in memory
     mov     r0, 0
-    store   r0, r3
+    store   r0, r3          ; Result is stored as first item in memory
     answer  0

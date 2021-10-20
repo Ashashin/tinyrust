@@ -126,11 +126,14 @@ impl Parser {
             let line = line.unwrap();
             let line = line.trim();
 
-            if Self::parse_comment(&line).is_some() || Self::parse_whitespace(&line).is_some() {
+            if line.is_empty()
+                || Self::parse_comment(line).is_some()
+                || Self::parse_whitespace(line).is_some()
+            {
                 continue;
-            } else if let Some(instr) = Self::parse_instruction(&line) {
+            } else if let Some(instr) = Self::parse_instruction(line) {
                 instructions.push(instr);
-            } else if let Some(label) = Self::parse_label(&line) {
+            } else if let Some(label) = Self::parse_label(line) {
                 labels.push(Label {
                     ident: label,
                     address: instructions.len(),
@@ -268,8 +271,17 @@ impl Parser {
     }
 
     fn parse_instruction(line: &str) -> Option<Instruction> {
-        let parts: Vec<_> = line.split_whitespace().collect();
+        let mut parts: Vec<_> = line.split_whitespace().collect();
 
+        // Discard comments if any
+        for (idx, part) in parts.iter().enumerate() {
+            if Self::parse_comment(part).is_some() {
+                parts.truncate(idx);
+                break;
+            }
+        }
+
+        // Discard empty line
         if parts.is_empty() {
             return None;
         }
