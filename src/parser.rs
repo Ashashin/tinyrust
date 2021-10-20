@@ -36,12 +36,6 @@ pub struct Params {
     pub registers: u16,
 }
 
-impl Params {
-    fn is_valid(&self) -> bool {
-        self.version == 1.0
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum Argument {
     Imm(i64),
@@ -130,6 +124,7 @@ impl Parser {
 
         for (idx, line) in lines.enumerate() {
             let line = line.unwrap();
+            let line = line.trim();
 
             if Self::parse_comment(&line).is_some() || Self::parse_whitespace(&line).is_some() {
                 continue;
@@ -156,8 +151,8 @@ impl Parser {
     fn check_params(params: Params) -> Result<(), Report> {
         if params.version != 1.0 {
             Err(eyre!("Unsupported version: {}", params.version))
-        } else if params.word_size > 64 {
-            Err(eyre!("Word size cannot exceed 64 bits"))
+        } else if params.word_size >= 64 {
+            Err(eyre!("Word size cannot exceed 63 bits"))
         } else {
             Ok(())
         }

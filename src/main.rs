@@ -11,6 +11,7 @@ mod vm;
 
 use parser::Parser;
 
+/// Command line options
 #[derive(Debug, StructOpt)]
 struct Opt {
     /// Program file
@@ -20,12 +21,9 @@ struct Opt {
     /// Tape file
     #[structopt(short, parse(from_os_str))]
     tape_file: Option<PathBuf>,
-
-    /// Output file
-    #[structopt(short, default_value = "cert.out")]
-    outfile: String,
 }
 
+/// Setup tracings and error reporting
 fn setup() {
     let fmt_layer = fmt::layer().with_target(false);
     let filter_layer = EnvFilter::try_from_default_env()
@@ -38,9 +36,12 @@ fn setup() {
         .with(ErrorLayer::default())
         .init();
 }
+/// Program entry point
 fn main() -> Result<(), Report> {
     // General setup
     setup();
+
+    // Process command-line arguments
     let opt = Opt::from_args();
 
     // Load program
@@ -52,14 +53,14 @@ fn main() -> Result<(), Report> {
     }
 
     // Run program
-    info!("All good to go!");
+    info!("✨ All good to go! ✨");
 
     match tinyvm.run()? {
         0 => {
-            info!("TinyVM terminated without error");
+            info!("✨ TinyVM terminated without error ✨");
             tinyvm.display_state();
             Ok(())
         }
-        x => Err(eyre!("Program terminated with error code {}", x)),
+        x => Err(eyre!("🔥 Program terminated with error code {} 🔥", x)),
     }
 }

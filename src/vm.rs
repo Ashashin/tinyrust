@@ -1,10 +1,7 @@
 use crate::parser::{Argument, Instruction, Params, Register};
-
+use color_eyre::Report;
 use std::collections::HashMap;
-
 use tracing::info;
-
-use color_eyre::{eyre::eyre, Report};
 
 #[derive(Debug)]
 struct State {
@@ -66,12 +63,7 @@ impl TinyVM {
         let instr = {
             match self.state.program.get(self.state.pc) {
                 Some(instr) => instr.clone(),
-                _ => {
-                    return Err(eyre!(
-                        "Segmentation fault: trying to access {}",
-                        self.state.pc
-                    ));
-                }
+                _ => Self::segfault(),
             }
         };
 
@@ -99,8 +91,8 @@ impl TinyVM {
 
     pub fn display_state(&self) {
         info!("flag: {}, pc: {}", self.state.flag, self.state.pc);
-        self.display_memory();
         self.display_registers();
+        self.display_memory();
     }
 
     pub fn run(&mut self) -> Result<usize, Report> {
@@ -124,11 +116,11 @@ impl TinyVM {
             // Integer operations
             Instruction::Add(reg1, reg2, arg) => self.add(&reg1, &reg2, &arg),
             Instruction::Sub(reg1, reg2, arg) => self.sub(&reg1, &reg2, &arg),
-            Instruction::MulL(reg1, reg2, arg) => unimplemented!(),
-            Instruction::UMulH(reg1, reg2, arg) => unimplemented!(),
-            Instruction::SMulH(reg1, reg2, arg) => unimplemented!(),
-            Instruction::UDiv(reg1, reg2, arg) => unimplemented!(),
-            Instruction::UMod(reg1, reg2, arg) => unimplemented!(),
+            Instruction::MulL(reg1, reg2, arg) => self.mull(&reg1, &reg2, &arg),
+            Instruction::UMulH(_reg1, _reg2, _arg) => unimplemented!("UMulH"),
+            Instruction::SMulH(_reg1, _reg2, _arg) => unimplemented!("SMulH"),
+            Instruction::UDiv(reg1, reg2, arg) => self.udiv(&reg1, &reg2, &arg),
+            Instruction::UMod(reg1, reg2, arg) => self.umod(&reg1, &reg2, &arg),
 
             // Shift operations
             Instruction::Shl(reg1, reg2, arg) => self.shl(&reg1, &reg2, &arg),
@@ -169,42 +161,46 @@ impl TinyVM {
 
     fn resolve(&self, arg: &Argument) -> usize {
         match arg {
-            Argument::Imm(x) => (*x).try_into().unwrap(),
-            Argument::Reg(reg) => self.state.registers[reg.index as usize],
+            Argument::Imm(x) => Self::to_unsigned(*x) as usize,
+            Argument::Reg(reg) => self.read_reg(reg),
             Argument::Label(ident) => self.resolved_labels[ident as &str],
         }
     }
 
+    fn segfault() -> Instruction {
+        Instruction::Answer(Argument::Imm(1))
+    }
+
     fn and(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
-        let value1 = self.state.registers[reg2.index as usize];
+        let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
 
         let result = value1 & value2;
         let zero = result == 0;
 
-        self.state.registers[reg1.index as usize] = result;
+        self.write_reg(reg1, result);
         self.state.flag = zero;
     }
 
     fn or(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
-        let value1 = self.state.registers[reg2.index as usize];
+        let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
 
         let result = value1 | value2;
         let zero = result == 0;
 
-        self.state.registers[reg1.index as usize] = result;
+        self.write_reg(reg1, result);
         self.state.flag = zero;
     }
 
     fn xor(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
-        let value1 = self.state.registers[reg2.index as usize];
+        let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
 
         let result = value1 ^ value2;
         let zero = result == 0;
 
-        self.state.registers[reg1.index as usize] = result;
+        self.write_reg(reg1, result);
         self.state.flag = zero;
     }
 
@@ -214,7 +210,7 @@ impl TinyVM {
         let result = !value;
         let zero = result == 0;
 
-        self.state.registers[reg.index as usize] = result;
+        self.write_reg(reg, result);
         self.state.flag = zero;
     }
 
@@ -222,13 +218,13 @@ impl TinyVM {
         let msb_mask = 1 << (self.params.word_size - 1);
         let value_mask = (1 << self.params.word_size) - 1;
 
-        let value1 = self.state.registers[reg2.index as usize];
+        let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
 
         let result = (value1 + value2) & value_mask;
         let carry = (result & msb_mask) > 0;
 
-        self.state.registers[reg1.index as usize] = result;
+        self.write_reg(reg1, result);
         self.state.flag = carry;
     }
 
@@ -236,45 +232,91 @@ impl TinyVM {
         let msb_mask = 1 << (self.params.word_size - 1);
         let value_mask = (1 << self.params.word_size) - 1;
 
-        let value1 = self.state.registers[reg2.index as usize];
+        let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
 
         let result = (value1 - value2 + (1 << self.params.word_size)) & value_mask;
         let carry = (result & msb_mask) > 0;
 
-        self.state.registers[reg1.index as usize] = result;
+        self.write_reg(reg1, result);
         self.state.flag = !carry;
+    }
+
+    fn mull(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
+        let value_mask = (1 << self.params.word_size) - 1;
+
+        let value1 = self.read_reg(reg2);
+        let value2 = self.resolve(arg);
+
+        let result = value1 * value2;
+        let carry = result > value_mask;
+        let result = result & value_mask;
+
+        self.write_reg(reg1, result);
+        self.state.flag = carry;
+    }
+
+    fn udiv(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
+        let value_mask = (1 << self.params.word_size) - 1;
+
+        let value1 = self.resolve(arg);
+
+        let (result, flag) = if value1 == 0 {
+            (0, true)
+        } else {
+            let value2 = self.read_reg(reg2);
+            ((value2 / value1) & value_mask, false)
+        };
+
+        self.write_reg(reg1, result);
+        self.state.flag = flag;
+    }
+
+    fn umod(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
+        let value_mask = (1 << self.params.word_size) - 1;
+
+        let value1 = self.resolve(arg);
+
+        let (result, flag) = if value1 == 0 {
+            (0, true)
+        } else {
+            let value2 = self.read_reg(reg2);
+            ((value2 % value1) & value_mask, false)
+        };
+
+        self.write_reg(reg1, result);
+        self.state.flag = flag;
     }
 
     fn shl(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
-        let value2 = self.state.registers[reg2.index as usize];
+        let value2 = self.read_reg(reg2);
         let value_mask = (1 << self.params.word_size) - 1;
         let msb_mask = 1 << (self.params.word_size - 1);
 
         let result = (value2 << value1) & value_mask;
         let carry = (result & msb_mask) > 0;
 
-        self.state.registers[reg1.index as usize] = result;
+        self.write_reg(reg1, result);
         self.state.flag = carry;
     }
 
     fn shr(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
-        let value2 = self.state.registers[reg2.index as usize];
+        let value2 = self.read_reg(reg2);
         let value_mask = (1 << self.params.word_size) - 1;
         let lsb_mask = 1;
 
         let result = (value2 >> value1) & value_mask;
         let carry = (result & lsb_mask) > 0;
 
-        self.state.registers[reg1.index as usize] = result;
+        self.write_reg(reg1, result);
         self.state.flag = carry;
     }
 
     fn cmpe(&mut self, reg: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
-        let value2 = self.state.registers[reg.index as usize];
+        let value2 = self.read_reg(reg);
 
         let equal = value1 == value2;
         self.state.flag = equal;
@@ -282,7 +324,7 @@ impl TinyVM {
 
     fn cmpa(&mut self, reg: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
-        let value2 = self.state.registers[reg.index as usize];
+        let value2 = self.read_reg(reg);
 
         let above = value1 < value2;
         self.state.flag = above;
@@ -290,7 +332,7 @@ impl TinyVM {
 
     fn cmpae(&mut self, reg: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
-        let value2 = self.state.registers[reg.index as usize];
+        let value2 = self.read_reg(reg);
 
         let above = value1 <= value2;
         self.state.flag = above;
@@ -300,9 +342,13 @@ impl TinyVM {
         unsafe { std::mem::transmute::<u64, i64>(x) }
     }
 
+    fn to_unsigned(x: i64) -> u64 {
+        unsafe { std::mem::transmute::<i64, u64>(x) }
+    }
+
     fn cmpg(&mut self, reg: &Register, arg: &Argument) {
         let value1 = Self::to_signed(self.resolve(arg) as u64);
-        let value2 = Self::to_signed(self.state.registers[reg.index as usize] as u64);
+        let value2 = Self::to_signed(self.read_reg(reg) as u64);
 
         let above = value1 < value2;
         self.state.flag = above;
@@ -310,7 +356,7 @@ impl TinyVM {
 
     fn cmpge(&mut self, reg: &Register, arg: &Argument) {
         let value1 = Self::to_signed(self.resolve(arg) as u64);
-        let value2 = Self::to_signed(self.state.registers[reg.index as usize] as u64);
+        let value2 = Self::to_signed(self.read_reg(reg) as u64);
 
         let above = value1 <= value2;
         self.state.flag = above;
@@ -363,12 +409,12 @@ impl TinyVM {
             }
         };
 
-        self.state.registers[reg.index as usize] = value;
+        self.write_reg(reg, value);
     }
 
     fn mov(&mut self, reg: &Register, arg: &Argument) {
         let value = self.resolve(arg);
-        self.state.registers[reg.index as usize] = value;
+        self.write_reg(reg, value);
     }
 
     fn cmov(&mut self, reg: &Register, arg: &Argument) {
@@ -380,7 +426,7 @@ impl TinyVM {
     fn store(&mut self, arg: &Argument, reg: &Register) {
         // Store contents of register reg at the address arg
         let addr = self.resolve(arg);
-        let value = self.state.registers[reg.index as usize];
+        let value = self.read_reg(reg);
 
         if self.state.memory.len() <= addr {
             self.state.memory.resize(addr + 1, 0);
@@ -391,12 +437,19 @@ impl TinyVM {
 
     fn load(&mut self, reg: &Register, arg: &Argument) {
         let addr = self.resolve(arg);
-        let value = self.state.registers[reg.index as usize];
+        let value = self.read_reg(reg);
 
         if self.state.memory.len() <= addr {
             self.state.memory.resize(addr + 1, 0);
         }
 
         self.state.memory[addr] = value;
+    }
+
+    fn read_reg(&self, reg: &Register) -> usize {
+        self.state.registers[reg.index as usize]
+    }
+    fn write_reg(&mut self, reg: &Register, val: usize) {
+        self.state.registers[reg.index as usize] = val;
     }
 }
