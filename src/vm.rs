@@ -1,7 +1,9 @@
-use crate::parser::{Argument, Instruction, Params, Register};
 use color_eyre::Report;
-use std::collections::HashMap;
 use tracing::info;
+
+use std::collections::HashMap;
+
+use crate::parser::{Argument, Instruction, Params, Register};
 
 #[derive(Debug)]
 struct State {
@@ -12,6 +14,24 @@ struct State {
     program: Vec<Instruction>,
     tape: Vec<usize>,
     memory: Vec<usize>,
+}
+
+impl State {
+    fn process_state<F>(&self, func: &mut F)
+    where
+        F: FnMut(&[u8]),
+    {
+        func(&self.pc.to_be_bytes());
+
+        func(&[self.flag as u8]);
+
+        for el in self.registers.iter() {
+            func(&el.to_be_bytes());
+        }
+        for el in self.memory.iter() {
+            func(&el.to_be_bytes());
+        }
+    }
 }
 #[derive(Debug)]
 pub struct TinyVM {
@@ -95,10 +115,16 @@ impl TinyVM {
         self.display_memory();
     }
 
-    pub fn run(&mut self) -> Result<usize, Report> {
+    pub fn run<F>(&mut self, mut callback: Option<F>) -> Result<usize, Report>
+    where
+        F: FnMut(&[u8]),
+    {
         self.start();
         while self.state.running {
             self.step()?;
+            if let Some(func) = &mut callback {
+                self.state.process_state(func)
+            }
         }
         Ok(self.result)
     }
