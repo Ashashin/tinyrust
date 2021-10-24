@@ -31,5 +31,5 @@ _finish:
     cnjmp   _iseven
 
     mov     r3, 0
-    store   r0, r3          ; Result is stored as first item in memory
+    store   r0, r2           ; Result is stored as first item in memory
     answer  0

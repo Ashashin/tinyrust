@@ -1,7 +1,7 @@
 ; TinyRAM V=1.000 W=63 K=8
 ;;; Collatz
 _init:
-mov r0, 32768               ; mettre la valeur qu'on veut tester, ici j'ai pris 32768
+read r0, 0                  ; Lis la valeur d'entrée
 mov r4, 0                   ; chargement du compteur d'itérations à zéro
 
 _loop:                      
