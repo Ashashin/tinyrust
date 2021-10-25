@@ -2,6 +2,7 @@ use color_eyre::Report;
 use std::{fmt::Debug, ops::Range, path::Path};
 use tinyvm::{parser::Parser, run_vm};
 
+use bitvec::prelude::*;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::prelude::*;
 
@@ -70,9 +71,13 @@ impl Prover {
             return false;
         }
 
-        // Temporary: compare at the byte level instead of the bit level
-        for &hash_val in run_result.hash.iter().take(self.params.kappa as usize) {
-            if hash_val != 0 {
+        for hash_val in run_result
+            .hash
+            .view_bits::<Lsb0>()
+            .iter()
+            .take(self.params.kappa as usize)
+        {
+            if !hash_val {
                 return false;
             }
         }
@@ -164,7 +169,7 @@ mod tests {
             input_domain: 1..1000,
             expected_output: 0,
             strategy: ProofStrategy::BestEffort,
-            kappa: 1, // Temporary
+            kappa: 14,
         });
 
         let proof = prover.obtain_proof()?;

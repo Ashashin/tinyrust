@@ -4,6 +4,7 @@ name = "ckc-prover"
 version = "0.1.0"
 
 [dependencies]
+bitvec = "*"
 color-eyre = "0.5.11"
 rayon = "1.5.1"
 sha-1 = "0.9.8"
