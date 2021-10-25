@@ -3,8 +3,6 @@ use std::{fmt::Debug, ops::Range, path::Path};
 use tinyvm::{parser::Parser, run_vm};
 
 use bitvec::prelude::*;
-use rayon::iter::IntoParallelRefIterator;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
@@ -29,17 +27,17 @@ pub struct Prover {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProverParams {
-    program_file: String,
-    input_domain: Range<usize>,
-    expected_output: usize,
-    kappa: u64,
-    strategy: ProofStrategy,
+    pub program_file: String,
+    pub input_domain: Range<usize>,
+    pub expected_output: usize,
+    pub kappa: u64,
+    pub strategy: ProofStrategy,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Proof {
-    vset: Vec<usize>,
-    params: ProverParams,
+    pub vset: Vec<usize>,
+    pub params: ProverParams,
 }
 
 impl Prover {
@@ -133,7 +131,7 @@ mod tests {
         Ok(())
     }
 
-    //#[test]
+    #[test]
     fn run_fib_with_instrumentation() -> Result<(), Report> {
         let result = run_instrumented_vm(&String::from("../assets/fib.tr"), 39)?;
         println!("Result = {:?}", result);
@@ -175,7 +173,7 @@ mod tests {
             input_domain: 1..1000,
             expected_output: 0,
             strategy: ProofStrategy::BestEffort,
-            kappa: 14,
+            kappa: 8,
         });
 
         let proof = prover.obtain_proof()?;
