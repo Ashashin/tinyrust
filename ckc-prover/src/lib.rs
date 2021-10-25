@@ -152,26 +152,14 @@ mod tests {
     }
 
     #[test]
-    fn run_collatz() -> Result<(), Report> {
-        let update_hash = |_: &[u8]| {};
-
-        let vm = Parser::load_program(&String::from("../assets/collatz_v0.tr"))?;
-        let result = run_vm(vm, vec![8], update_hash)?;
-        println!("Result = {}", result);
-
-        assert_eq!(result, 0);
-        Ok(())
-    }
-
-    #[test]
     fn run_collatz_with_instrumentation() -> Result<(), Report> {
         let result = run_instrumented_vm(&String::from("../assets/collatz_v0.tr"), 39)?;
         println!("Result = {:?}", result);
 
         let expected_output = 0;
         let expected_hash = vec![
-            104, 215, 153, 215, 16, 249, 82, 66, 165, 150, 84, 196, 233, 89, 118, 123, 255, 20,
-            107, 110,
+            207, 67, 116, 21, 255, 105, 44, 150, 150, 218, 175, 129, 83, 176, 43, 246, 240, 54,
+            117, 194,
         ];
 
         assert_eq!(result.output, expected_output);

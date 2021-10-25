@@ -29,5 +29,5 @@ _finish:
     cmpa    r0, 1           ; Finalisation if we reached a value < 2
     cjmp   _iseven
 
-    store   0, r2           ; Result is stored as first item in memory
+    store   1, r2           ; Result is stored as second item in memory
     answer  0
