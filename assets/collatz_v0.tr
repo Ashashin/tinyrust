@@ -1,10 +1,9 @@
-; TinyRAM V=1.00 W=63 K=4
+; TinyRAM V=1.00 W=63 K=3
 ; Compute the collatz sequence
 
 _init: 
     read    r0, 0           ; Read inital value
     mov     r2, 0           ; Init counter
-    mov     r3, 1           ; Store value 1 for comparison
 
     jmp _finish             ; First check if value is 1
 
@@ -13,7 +12,7 @@ _iseven:
     shr     r1, r0, 1
     shl     r1, r1, 1       ; r1 = (r0 >> 1) << 1 i.e r0 with last bit set to 0
     xor     r1, r0, r1      ; r0 ^ r1
-    cmpe    r1, r3
+    cmpe    r1, 1
     cnjmp   _even
 
 _odd:
@@ -27,9 +26,8 @@ _even:
 
 
 _finish:
-    cmpe    r0, r3          ; Finalisation if we reached the value 1
-    cnjmp   _iseven
+    cmpa    r0, 1           ; Finalisation if we reached a value < 2
+    cjmp   _iseven
 
-    mov     r3, 0
-    store   r0, r2           ; Result is stored as first item in memory
+    store   0, r2           ; Result is stored as first item in memory
     answer  0

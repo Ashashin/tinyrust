@@ -140,6 +140,18 @@ mod tests {
     }
 
     #[test]
+    fn run_collatz() -> Result<(), Report> {
+        let update_hash = |_: &[u8]| {};
+
+        let vm = Parser::load_program(&String::from("../assets/collatz_v0.tr"))?;
+        let result = run_vm(vm, vec![8], update_hash)?;
+        println!("Result = {}", result);
+
+        assert_eq!(result, 2);
+        Ok(())
+    }
+
+    #[test]
     fn run_collatz_with_instrumentation() -> Result<(), Report> {
         let result = run_instrumented_vm(&String::from("../assets/collatz_v0.tr"), 39)?;
         println!("Result = {:?}", result);
