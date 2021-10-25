@@ -47,24 +47,27 @@ impl Prover {
 
     pub fn obtain_proof(&self) -> Result<Proof, Report> {
         match self.params.strategy {
-            ProofStrategy::BestEffort => {
-                let mut vset = vec![];
-                let mut trials = 0;
-                self.params.input_domain.clone().for_each(|i| {
-                    trials += 1;
-                    let run_result =
-                        run_instrumented_vm(self.params.program_file.clone(), i).unwrap();
-                    if self.select_witness(run_result) {
-                        vset.push(i);
-                    }
-                });
-                Ok(Proof {
-                    vset,
-                    params: self.params.clone(),
-                })
+            ProofStrategy::BestEffort | ProofStrategy::FixedEffort => {
+                Ok(self.obtain_proof_best_effort()?)
             }
             _ => unimplemented!("Strategy unsupported: {:?}", self.params.strategy),
         }
+    }
+
+    fn obtain_proof_best_effort(&self) -> Result<Proof, Report> {
+        let mut vset = vec![];
+        let mut trials = 0;
+        self.params.input_domain.clone().for_each(|i| {
+            trials += 1;
+            let run_result = run_instrumented_vm(self.params.program_file.clone(), i).unwrap();
+            if self.select_witness(run_result) {
+                vset.push(i);
+            }
+        });
+        Ok(Proof {
+            vset,
+            params: self.params.clone(),
+        })
     }
 
     fn select_witness(&self, run_result: RunResult) -> bool {
