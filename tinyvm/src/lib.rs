@@ -8,8 +8,8 @@ use tracing_subscriber::{fmt, EnvFilter};
 
 use std::path::PathBuf;
 
-mod parser;
-mod vm;
+pub mod parser;
+pub mod vm;
 
 use parser::Parser;
 use vm::TinyVM;
@@ -40,7 +40,7 @@ fn setup() {
         .init();
 }
 /// Program entry point
-fn main() -> Result<(), Report> {
+pub fn from_cli() -> Result<(), Report> {
     // General setup
     setup();
 
@@ -69,7 +69,7 @@ fn main() -> Result<(), Report> {
     let update_hash = |s: &[u8]| hasher.update(s);
 
     // Run program
-    let output = run_vm(tinyvm, input, Some(update_hash))?;
+    let output = run_vm(tinyvm, input, update_hash)?;
 
     // Finalize hashing and write to file
     let hash = hasher.finalize();
@@ -79,7 +79,7 @@ fn main() -> Result<(), Report> {
     Ok(())
 }
 
-fn run_vm<F>(mut tinyvm: TinyVM, input: Vec<usize>, callback: Option<F>) -> Result<usize, Report>
+pub fn run_vm<F>(mut tinyvm: TinyVM, input: Vec<usize>, callback: F) -> Result<usize, Report>
 where
     F: FnMut(&[u8]),
 {

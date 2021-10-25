@@ -1,0 +1,15 @@
+[package]
+edition = "2021"
+name = "tinyvm"
+version = "0.1.0"
+
+[dependencies]
+color-eyre = "0.5.11"
+eyre = "0.6.5"
+lazy_static = "1.4.0"
+regex = "1.5.4"
+sha-1 = "0.9"
+structopt = "*"
+tracing = "0.1.29"
+tracing-error = "0.1.2"
+tracing-subscriber = "0.2.25"

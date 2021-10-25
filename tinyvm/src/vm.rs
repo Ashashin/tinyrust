@@ -115,16 +115,14 @@ impl TinyVM {
         self.display_memory();
     }
 
-    pub fn run<F>(&mut self, mut callback: Option<F>) -> Result<usize, Report>
+    pub fn run<F>(&mut self, mut callback: F) -> Result<usize, Report>
     where
         F: FnMut(&[u8]),
     {
         self.start();
         while self.state.running {
             self.step()?;
-            if let Some(func) = &mut callback {
-                self.state.process_state(func)
-            }
+            self.state.process_state(&mut callback)
         }
         Ok(self.result)
     }

@@ -1,0 +1,9 @@
+[package]
+edition = "2021"
+name = "ckc-prover"
+version = "0.1.0"
+
+[dependencies]
+color-eyre = "0.5.11"
+sha-1 = "0.9.8"
+tinyvm = {path = "../tinyvm"}

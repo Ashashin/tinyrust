@@ -1,0 +1,8 @@
+[package]
+edition = "2021"
+name = "ckc-verifier"
+version = "0.1.0"
+
+[dependencies]
+GSL = "6.0.0"
+ckc-prover = {path = "../ckc-prover"}
