@@ -1,3 +1,14 @@
+use ckc_prover::Proof;
+
+pub struct Verifier {}
+pub struct ProofReport {}
+
+impl Verifier {
+    pub fn check_proof(proof: Proof) -> ProofReport {
+        todo!()
+    }
+}
+
 /// Computes 2F1 and returns `Some(value, error estimate)` on success
 //
 // Note: this relies on GSL, which may need to be installed:

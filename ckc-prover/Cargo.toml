@@ -7,5 +7,6 @@ version = "0.1.0"
 bitvec = "*"
 color-eyre = "0.5.11"
 rayon = "1.5.1"
+serde = {version = "1.0.130", features = ["derive"]}
 sha-1 = "0.9.8"
 tinyvm = {path = "../tinyvm"}

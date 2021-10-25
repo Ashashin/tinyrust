@@ -5,18 +5,20 @@ use tinyvm::{parser::Parser, run_vm};
 use bitvec::prelude::*;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
-pub struct RunResult {
+struct RunResult {
     hash: Vec<u8>,
     input: usize,
     output: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum ProofStrategy {
     FixedEffort,
     BestEffort,
+    BestEffortAdaptive,
     OverTesting,
     ReTestingSalt,
     ReTestingObfuscation,
@@ -25,6 +27,7 @@ pub enum ProofStrategy {
 pub struct Prover {
     params: ProverParams,
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProverParams {
     program_file: String,
     input_domain: Range<usize>,
@@ -33,9 +36,10 @@ pub struct ProverParams {
     strategy: ProofStrategy,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Proof {
     vset: Vec<usize>,
+    params: ProverParams,
 }
 
 impl Prover {
@@ -56,7 +60,10 @@ impl Prover {
                         vset.push(i);
                     }
                 });
-                Ok(Proof { vset })
+                Ok(Proof {
+                    vset,
+                    params: self.params.clone(),
+                })
             }
             _ => unimplemented!("Strategy unsupported: {:?}", self.params.strategy),
         }
@@ -152,7 +159,7 @@ mod tests {
         let result = run_vm(vm, vec![8], update_hash)?;
         println!("Result = {}", result);
 
-        assert_eq!(result, 2);
+        assert_eq!(result, 0);
         Ok(())
     }
 
@@ -163,9 +170,8 @@ mod tests {
 
         let expected_output = 0;
         let expected_hash = vec![
-            151, 95, 124, 168, 144, 136, 237, 18, //
-            62, 106, 91, 79, 128, 105, 104, 40, //
-            39, 129, 21, 199,
+            104, 215, 153, 215, 16, 249, 82, 66, 165, 150, 84, 196, 233, 89, 118, 123, 255, 20,
+            107, 110,
         ];
 
         assert_eq!(result.output, expected_output);
