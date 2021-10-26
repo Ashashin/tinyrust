@@ -5,5 +5,7 @@ version = "0.1.0"
 
 [dependencies]
 GSL = "6.0.0"
+color-eyre = "0.5.11"
+sha-1 = "0.9.8"
 ckc-prover = {path = "../ckc-prover"}
 tinyvm = {path = "../tinyvm"}
