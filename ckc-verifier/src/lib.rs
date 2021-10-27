@@ -6,17 +6,36 @@ pub struct ProofReport {
     valid_vset: Vec<usize>,
     eta: f64,
     q: f64,
+    valid: bool,
+}
+
+impl ProofReport {
+    pub fn display(&self) {
+        let program = &self.proof.params.program_file;
+        let proof_strategy = format!("Proof strategy: {:?}", self.proof.params.strategy);
+        let proof_valid = format!("Proof is accepted: *{}*", self.valid);
+        let claim = format!("Claim: all values in {:?}", self.proof.params.input_domain);
+        let proof_eta = format!("Probability to find this proof: {}", self.eta);
+        let proof_q = format!("Probability that claim is true: {}", self.q);
+
+        let report = [proof_strategy, claim, proof_eta, proof_q].join("\n\t");
+        let report = format!("REPORT for {}\n\t{}\n\n{}", program, report, proof_valid);
+
+        println!("{}", report);
+    }
 }
 
 impl Verifier {
-    pub fn check_proof(proof: Proof) -> ProofReport {
+    pub fn check_proof(proof: Proof, epsilon: f64) -> ProofReport {
         match proof.params.strategy {
+            ProofStrategy::FixedEffort => Self::check_proof_fixed_effort(proof, epsilon),
             ProofStrategy::BestEffort => Self::check_proof_best_effort(proof),
+
             _ => unimplemented!("Unsupported proof strategy: {:?}", proof.params.strategy),
         }
     }
 
-    fn check_proof_best_effort(proof: Proof) -> ProofReport {
+    fn check_proof_fixed_effort(proof: Proof, epsilon: f64) -> ProofReport {
         let u = proof.params.input_domain.end - proof.params.input_domain.start;
         let kappa = proof.params.kappa;
 
@@ -26,11 +45,34 @@ impl Verifier {
         let eta = compute_eta(kappa, u, v);
         let q = compute_q(kappa, u, v);
 
+        let valid = q > 1.0 - epsilon && v == proof.vset.len();
+
         ProofReport {
             proof,
             valid_vset,
             eta,
             q,
+            valid,
+        }
+    }
+
+    fn check_proof_best_effort(proof: Proof) -> ProofReport {
+        let u = proof.params.input_domain.end - proof.params.input_domain.start;
+        let kappa = proof.params.kappa;
+
+        let valid_vset = Self::validate_vset(&proof.vset, &proof.params);
+        let v = valid_vset.len();
+        let valid = v == proof.vset.len();
+
+        let eta = compute_eta(kappa, u, v);
+        let q = compute_q(kappa, u, v);
+
+        ProofReport {
+            proof,
+            valid_vset,
+            eta,
+            q,
+            valid,
         }
     }
 
@@ -38,9 +80,8 @@ impl Verifier {
         let mut new_vset = vec![];
 
         for &i in vset {
-            if params.input_domain.contains(&i) && vset.len() > params.v {
-                // TODO: separate actual failure from the discovery of a counter-example ?
-                let succes = match run_instrumented_vm(params.program_file.clone(), i) {
+            if params.input_domain.contains(&i) && vset.len() >= params.v {
+                let success = match run_instrumented_vm(params.program_file.clone(), i) {
                     Ok(res) => {
                         res.output == params.expected_output
                             && validate_hash(res.hash, params.kappa as usize)
@@ -48,7 +89,7 @@ impl Verifier {
                     Err(_e) => false,
                 };
 
-                if succes {
+                if success {
                     new_vset.push(i);
                 }
             }
@@ -128,5 +169,33 @@ fn erfc(x: f64) -> Option<(f64, f64)> {
             dbg!(code);
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+
+    #[test]
+    fn report_display() {
+        let fake_proof = ProofReport {
+            proof: Proof {
+                vset: vec![],
+                params: ProverParams {
+                    program_file: String::from("none.txt"),
+                    input_domain: 42..69,
+                    expected_output: 33,
+                    kappa: 12,
+                    v: 3,
+                    strategy: ProofStrategy::BestEffortAdaptive,
+                },
+            },
+            eta: 0.4,
+            q: 0.6,
+            valid: false,
+            valid_vset: vec![],
+        };
+
+        fake_proof.display();
     }
 }
