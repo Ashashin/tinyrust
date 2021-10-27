@@ -6,10 +6,10 @@ use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
-struct RunResult {
-    hash: Vec<u8>,
-    input: usize,
-    output: usize,
+pub struct RunResult {
+    pub hash: Vec<u8>,
+    pub input: usize,
+    pub output: usize,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
@@ -31,6 +31,7 @@ pub struct ProverParams {
     pub input_domain: Range<usize>,
     pub expected_output: usize,
     pub kappa: u64,
+    pub v: usize,
     pub strategy: ProofStrategy,
 }
 
@@ -79,22 +80,21 @@ impl Prover {
             return false;
         }
 
-        for hash_val in run_result
-            .hash
-            .view_bits::<Lsb0>()
-            .iter()
-            .take(self.params.kappa as usize)
-        {
-            if !hash_val {
-                return false;
-            }
-        }
-
-        true
+        validate_hash(run_result.hash, self.params.kappa as usize)
     }
 }
 
-fn run_instrumented_vm<P>(filename: P, input: usize) -> Result<RunResult, Report>
+pub fn validate_hash(hash: Vec<u8>, kappa: usize) -> bool {
+    for hash_val in hash.view_bits::<Lsb0>().iter().take(kappa) {
+        if !hash_val {
+            return false;
+        }
+    }
+
+    true
+}
+
+pub fn run_instrumented_vm<P>(filename: P, input: usize) -> Result<RunResult, Report>
 where
     P: AsRef<Path> + Debug,
 {
@@ -177,6 +177,7 @@ mod tests {
             expected_output: 0,
             strategy: ProofStrategy::BestEffort,
             kappa: 8,
+            v: 1000,
         });
 
         let proof = prover.obtain_proof()?;

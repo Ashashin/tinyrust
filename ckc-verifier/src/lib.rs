@@ -1,7 +1,12 @@
-use ckc_prover::{Proof, ProofStrategy};
+use ckc_prover::{run_instrumented_vm, validate_hash, Proof, ProofStrategy, ProverParams};
 
 pub struct Verifier {}
-pub struct ProofReport {}
+pub struct ProofReport {
+    proof: Proof,
+    valid_vset: Vec<usize>,
+    eta: f64,
+    q: f64,
+}
 
 impl Verifier {
     pub fn check_proof(proof: Proof) -> ProofReport {
@@ -13,15 +18,42 @@ impl Verifier {
 
     fn check_proof_best_effort(proof: Proof) -> ProofReport {
         let u = proof.params.input_domain.end - proof.params.input_domain.start;
-        let v = proof.vset.len();
         let kappa = proof.params.kappa;
+
+        let valid_vset = Self::validate_vset(&proof.vset, &proof.params);
+        let v = valid_vset.len();
 
         let eta = compute_eta(kappa, u, v);
         let q = compute_q(kappa, u, v);
 
-        dbg!(eta, q);
+        ProofReport {
+            proof,
+            valid_vset,
+            eta,
+            q,
+        }
+    }
 
-        todo!()
+    fn validate_vset(vset: &Vec<usize>, params: &ProverParams) -> Vec<usize> {
+        let mut new_vset = vec![];
+
+        for &i in vset {
+            if params.input_domain.contains(&i) && vset.len() > params.v {
+                // TODO: separate actual failure from the discovery of a counter-example ?
+                let succes = match run_instrumented_vm(params.program_file.clone(), i) {
+                    Ok(res) => {
+                        res.output == params.expected_output
+                            && validate_hash(res.hash, params.kappa as usize)
+                    }
+                    Err(_e) => false,
+                };
+
+                if succes {
+                    new_vset.push(i);
+                }
+            }
+        }
+        new_vset
     }
 }
 
