@@ -1,10 +1,10 @@
 use color_eyre::Report;
-use std::{fmt::Debug, ops::Range, path::Path};
+use std::{fmt::Debug, ops::Range, path::Path, time::Instant};
 use tinyvm::{parser::Parser, run_vm};
 
+use crate::stats::compute_delta_u;
 use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::stats::compute_delta_u;
 
 #[derive(Debug)]
 pub struct RunResult {
@@ -18,7 +18,7 @@ pub enum ProofStrategy {
     FixedEffort,
     BestEffort,
     BestEffortAdaptive,
-    OverTesting,
+    OverTesting(f64),
 }
 
 pub struct Prover {
@@ -29,7 +29,6 @@ pub struct ProverParams {
     pub program_file: String,
     pub input_domain: Range<usize>,
     pub expected_output: usize,
-    pub eta0: f64,
     pub kappa: u64,
     pub v: usize,
     pub strategy: ProofStrategy,
@@ -38,7 +37,7 @@ pub struct ProverParams {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Proof {
     pub vset: Vec<usize>,
-    pub domain: Range<usize>,
+    pub extended_domain: Option<Range<usize>>,
     pub params: ProverParams,
 }
 
@@ -48,13 +47,20 @@ impl Prover {
     }
 
     pub fn obtain_proof(&self) -> Result<Proof, Report> {
-        match self.params.strategy {
+        let start = Instant::now();
+        let result = match self.params.strategy {
             ProofStrategy::BestEffort | ProofStrategy::FixedEffort => {
                 self.obtain_proof_best_effort()
-            },
-            ProofStrategy::OverTesting => self.obtain_proof_overtesting(),
+            }
+            ProofStrategy::OverTesting(eta0) => self.obtain_proof_overtesting(eta0),
             _ => unimplemented!("Strategy unsupported: {:?}", self.params.strategy),
-        }
+        };
+
+        let duration = start.elapsed();
+
+        println!("Prover time: {:?}", duration);
+
+        result
     }
 
     fn obtain_proof_best_effort(&self) -> Result<Proof, Report> {
@@ -64,21 +70,21 @@ impl Prover {
             trials += 1;
             let run_result = run_instrumented_vm(self.params.program_file.clone(), i).unwrap();
             if self.select_witness(run_result) {
-                    vset.push(i);
+                vset.push(i);
             }
         });
         Ok(Proof {
             vset,
-            domain: self.params.input_domain.clone(),
+            extended_domain: None,
             params: self.params.clone(),
         })
     }
 
-    fn obtain_proof_overtesting(&self) -> Result<Proof, Report> {
+    fn obtain_proof_overtesting(&self, eta0: f64) -> Result<Proof, Report> {
         let start = self.params.input_domain.start;
         let end = self.params.input_domain.end;
 
-        let delta = compute_delta_u(self.params.eta0, self.params.kappa, end-start, self.params.v);
+        let delta = compute_delta_u(eta0, self.params.kappa, end - start, self.params.v);
         let extended_domain = start..(end + delta);
 
         let mut vset = vec![];
@@ -88,12 +94,12 @@ impl Prover {
             trials += 1;
             let run_result = run_instrumented_vm(self.params.program_file.clone(), i).unwrap();
             if self.select_witness(run_result) {
-                    vset.push(i);
+                vset.push(i);
             }
         });
         Ok(Proof {
             vset,
-            domain: extended_domain,
+            extended_domain: Some(extended_domain),
             params: self.params.clone(),
         })
     }

@@ -56,20 +56,24 @@ mod tests {
     }
 
     #[test]
-    fn run_proof() -> Result<(), Report> {
+    fn run_prover_and_verifier() -> Result<(), Report> {
         let prover = prover::Prover::new(prover::ProverParams {
             program_file: String::from("../assets/collatz_v0.tr"),
             input_domain: 1..1000,
-            eta0: 0.99,
             expected_output: 0,
             strategy: prover::ProofStrategy::BestEffort,
             kappa: 8,
             v: 1000,
         });
 
+        // Get proof
         let proof = prover.obtain_proof()?;
 
-        println!("Proof = {:?}", proof);
+        // Check proof
+        let epsilon = 0.99;
+        let result = verifier::Verifier::check_proof(proof, epsilon);
+
+        result.display();
 
         Ok(())
     }
@@ -82,13 +86,12 @@ mod tests {
                 params: prover::ProverParams {
                     program_file: String::from("none.txt"),
                     input_domain: 42..69,
-                    eta0: 0.99,
                     expected_output: 33,
                     kappa: 12,
                     v: 3,
                     strategy: prover::ProofStrategy::BestEffortAdaptive,
                 },
-                domain: 42..69,
+                extended_domain: None,
             },
             eta: 0.4,
             q: 0.6,
