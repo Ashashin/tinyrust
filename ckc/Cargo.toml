@@ -1,12 +1,14 @@
 [package]
 edition = "2021"
-name = "ckc-prover"
+name = "ckc"
 version = "0.1.0"
 
 [dependencies]
-bitvec = "*"
+GSL = "6.0.0"
+bitvec = "0.22.3"
 color-eyre = "0.5.11"
 rayon = "1.5.1"
 serde = {version = "1.0.130", features = ["derive"]}
 sha-1 = "0.9.8"
+statrs = "*"
 tinyvm = {path = "../tinyvm"}

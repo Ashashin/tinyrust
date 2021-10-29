@@ -2,6 +2,5 @@
 
 members = [
   "tinyvm",
-  "ckc-prover",
-  "ckc-verifier",
+  "ckc",
 ]

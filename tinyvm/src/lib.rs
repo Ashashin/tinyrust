@@ -2,9 +2,6 @@ use color_eyre::{eyre::eyre, Report};
 use sha1::{Digest, Sha1};
 use structopt::StructOpt;
 use tracing::info;
-use tracing_error::ErrorLayer;
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::{fmt, EnvFilter};
 
 use std::path::PathBuf;
 
@@ -26,24 +23,8 @@ struct Opt {
     tape_file: Option<PathBuf>,
 }
 
-/// Setup tracings and error reporting
-fn setup() {
-    let fmt_layer = fmt::layer().with_target(false);
-    let filter_layer = EnvFilter::try_from_default_env()
-        .or_else(|_| EnvFilter::try_new("info"))
-        .unwrap();
-
-    tracing_subscriber::registry()
-        .with(filter_layer)
-        .with(fmt_layer)
-        .with(ErrorLayer::default())
-        .init();
-}
 /// Program entry point
 pub fn from_cli() -> Result<(), Report> {
-    // General setup
-    setup();
-
     // Process command-line arguments
     let opt = Opt::from_args();
 
