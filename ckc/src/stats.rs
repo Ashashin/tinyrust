@@ -32,9 +32,10 @@ pub fn approx_binomial(n: usize, k: usize) -> f64 {
     term1 * term2
 }
 
-pub fn compute_delta_u(eta0: f64, p: f64, u: usize, v: usize) -> usize {
+pub fn compute_delta_u(eta0: f64, kappa: u64, u: usize, v: usize) -> usize {
     use statrs::function::erf::erfc_inv;
 
+    let p = 1.0 - (kappa as f64) / 160.0;
     let alpha = erfc_inv(2.0 * eta0);
 
     ((u as f64)

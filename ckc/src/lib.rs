@@ -60,6 +60,7 @@ mod tests {
         let prover = prover::Prover::new(prover::ProverParams {
             program_file: String::from("../assets/collatz_v0.tr"),
             input_domain: 1..1000,
+            eta0: 0.99,
             expected_output: 0,
             strategy: prover::ProofStrategy::BestEffort,
             kappa: 8,
@@ -81,11 +82,13 @@ mod tests {
                 params: prover::ProverParams {
                     program_file: String::from("none.txt"),
                     input_domain: 42..69,
+                    eta0: 0.99,
                     expected_output: 33,
                     kappa: 12,
                     v: 3,
                     strategy: prover::ProofStrategy::BestEffortAdaptive,
                 },
+                domain: 42..69,
             },
             eta: 0.4,
             q: 0.6,

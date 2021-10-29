@@ -151,6 +151,7 @@ impl Parser {
         Ok(TinyVM::new(params, instructions, resolved_labels))
     }
 
+    #[allow(clippy::float_cmp)]
     fn check_params(params: Params) -> Result<(), Report> {
         if params.version != 1.0 {
             Err(eyre!("Unsupported version: {}", params.version))

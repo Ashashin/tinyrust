@@ -4,6 +4,7 @@ use tinyvm::{parser::Parser, run_vm};
 
 use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
+use crate::stats::compute_delta_u;
 
 #[derive(Debug)]
 pub struct RunResult {
@@ -28,6 +29,7 @@ pub struct ProverParams {
     pub program_file: String,
     pub input_domain: Range<usize>,
     pub expected_output: usize,
+    pub eta0: f64,
     pub kappa: u64,
     pub v: usize,
     pub strategy: ProofStrategy,
@@ -36,6 +38,7 @@ pub struct ProverParams {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Proof {
     pub vset: Vec<usize>,
+    pub domain: Range<usize>,
     pub params: ProverParams,
 }
 
@@ -47,8 +50,9 @@ impl Prover {
     pub fn obtain_proof(&self) -> Result<Proof, Report> {
         match self.params.strategy {
             ProofStrategy::BestEffort | ProofStrategy::FixedEffort => {
-                Ok(self.obtain_proof_best_effort()?)
-            }
+                self.obtain_proof_best_effort()
+            },
+            ProofStrategy::OverTesting => self.obtain_proof_overtesting(),
             _ => unimplemented!("Strategy unsupported: {:?}", self.params.strategy),
         }
     }
@@ -60,11 +64,36 @@ impl Prover {
             trials += 1;
             let run_result = run_instrumented_vm(self.params.program_file.clone(), i).unwrap();
             if self.select_witness(run_result) {
-                vset.push(i);
+                    vset.push(i);
             }
         });
         Ok(Proof {
             vset,
+            domain: self.params.input_domain.clone(),
+            params: self.params.clone(),
+        })
+    }
+
+    fn obtain_proof_overtesting(&self) -> Result<Proof, Report> {
+        let start = self.params.input_domain.start;
+        let end = self.params.input_domain.end;
+
+        let delta = compute_delta_u(self.params.eta0, self.params.kappa, end-start, self.params.v);
+        let extended_domain = start..(end + delta);
+
+        let mut vset = vec![];
+        let mut trials = 0;
+
+        extended_domain.clone().for_each(|i| {
+            trials += 1;
+            let run_result = run_instrumented_vm(self.params.program_file.clone(), i).unwrap();
+            if self.select_witness(run_result) {
+                    vset.push(i);
+            }
+        });
+        Ok(Proof {
+            vset,
+            domain: extended_domain,
             params: self.params.clone(),
         })
     }

@@ -1,4 +1,4 @@
-use crate::prover::{run_instrumented_vm, validate_hash, Proof, ProofStrategy, ProverParams};
+use crate::prover::{run_instrumented_vm, validate_hash, Proof, ProofStrategy};
 use crate::stats;
 
 pub struct Verifier {}
@@ -40,6 +40,7 @@ impl Verifier {
         match proof.params.strategy {
             ProofStrategy::FixedEffort => Self::check_proof_fixed_effort(proof, epsilon),
             ProofStrategy::BestEffort => Self::check_proof_best_effort(proof),
+            ProofStrategy::OverTesting => Self::check_proof_overtesting(proof),
 
             _ => unimplemented!("Unsupported proof strategy: {:?}", proof.params.strategy),
         }
@@ -54,7 +55,7 @@ impl Verifier {
         let q = stats::compute_q(kappa, u, v);
 
         let valid = q > 1.0 - epsilon
-            && Self::validate_vset(&proof.vset, &proof.params) == ValidationResult::Valid;
+            && Self::validate_vset(&proof) == ValidationResult::Valid;
 
         ProofReport {
             proof,
@@ -73,7 +74,7 @@ impl Verifier {
         let q = stats::compute_q(kappa, u, v);
 
         let valid = matches!(
-            Self::validate_vset(&proof.vset, &proof.params),
+            Self::validate_vset(&proof),
             ValidationResult::Valid | ValidationResult::ValidButTooFewHashes(_)
         );
 
@@ -85,22 +86,43 @@ impl Verifier {
         }
     }
 
-    fn validate_vset(vset: &[usize], params: &ProverParams) -> ValidationResult {
-        let enough_hashes = vset.len() >= params.v;
+    fn check_proof_overtesting(proof: Proof) -> ProofReport {
+        let u = proof.params.input_domain.end - proof.params.input_domain.start;
+        let kappa = proof.params.kappa;
 
-        for &i in vset {
-            if !params.input_domain.contains(&i) {
+        let v = proof.vset.len();
+        let eta = stats::compute_eta(kappa, u, v);
+        let q = stats::compute_q(kappa, u, v);
+
+        let valid = matches!(
+            Self::validate_vset(&proof),
+            ValidationResult::Valid
+        );
+
+        ProofReport {
+            proof,
+            eta,
+            q,
+            valid,
+        }
+    }
+
+    fn validate_vset(proof: &Proof) -> ValidationResult {
+        let enough_hashes = proof.vset.len() >= proof.params.v;
+
+        for &i in proof.vset.as_slice() {
+            if !proof.domain.contains(&i) {
                 // Blocking error
                 return ValidationResult::IncorrectInput(i);
             }
 
-            match run_instrumented_vm(params.program_file.clone(), i) {
+            match run_instrumented_vm(proof.params.program_file.clone(), i) {
                 Ok(res) => {
-                    if res.output != params.expected_output {
+                    if res.output != proof.params.expected_output {
                         return ValidationResult::IncorrectOutput(res.output);
                     }
 
-                    if !validate_hash(res.hash, params.kappa as usize) {
+                    if !validate_hash(res.hash, proof.params.kappa as usize) {
                         return ValidationResult::IncorrectHash;
                     }
                 }
@@ -111,7 +133,7 @@ impl Verifier {
         if enough_hashes {
             ValidationResult::Valid
         } else {
-            ValidationResult::ValidButTooFewHashes(vset.len())
+            ValidationResult::ValidButTooFewHashes(proof.vset.len())
         }
     }
 }
