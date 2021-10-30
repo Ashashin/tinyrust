@@ -9,6 +9,10 @@ pub fn compute_eta(kappa: u64, u: usize, v: usize) -> f64 {
 }
 
 pub fn compute_q(kappa: u64, u: usize, r: usize) -> f64 {
+    if u < 1 || r < 1 {
+        return 0.0;
+    }
+
     let p = 1.0 - (kappa as f64) / 160.0;
     let term1 = (1.0 - p).powf((u - r) as f64);
     let term2 = approx_binomial(u - 1, r - 1);

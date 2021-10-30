@@ -6,6 +6,8 @@ use std::{
     path::Path,
 };
 
+use serde::{Deserialize, Serialize};
+
 use crate::vm::TinyVM;
 
 use color_eyre::{
@@ -17,7 +19,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use tracing::info;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Register {
     pub index: u16,
 }
@@ -36,14 +38,14 @@ pub struct Params {
     pub registers: u16,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Argument {
     Imm(i64),
     Reg(Register),
     Label(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Instruction {
     And(Register, Register, Argument),
     Or(Register, Register, Argument),

@@ -1,4 +1,4 @@
-use crate::prover::{run_instrumented_vm, validate_hash, Proof, ProofStrategy};
+use crate::prover::{validate_hash, InstrumentedVM, Proof, ProofStrategy};
 use crate::stats;
 
 use std::{ops::Range, time::Instant};
@@ -18,6 +18,7 @@ pub struct ProofReport {
 #[derive(PartialEq, Eq, Debug)]
 enum ValidationResult {
     IncorrectHash,
+    InvalidProgram,
     IncorrectInput(usize),
     IncorrectOutput(usize),
     ExecutionError,
@@ -151,13 +152,18 @@ impl Verifier {
     fn validate_vset(proof: &Proof, domain: &Range<usize>) -> ValidationResult {
         let enough_hashes = proof.vset.len() >= proof.params.v;
 
+        let mut vm = match InstrumentedVM::new(&proof.params.program_file) {
+            Ok(ivm) => ivm,
+            _ => return ValidationResult::InvalidProgram,
+        };
+
         for &i in proof.vset.as_slice() {
             if !domain.contains(&i) {
                 // Value is outside of authorised domain
                 return ValidationResult::IncorrectInput(i);
             }
 
-            match run_instrumented_vm(proof.params.program_file.clone(), i) {
+            match vm.run(i) {
                 Ok(res) => {
                     if res.output != proof.params.expected_output {
                         // Output does not match expectation
