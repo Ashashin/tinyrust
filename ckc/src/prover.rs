@@ -50,11 +50,10 @@ impl Prover {
     pub fn obtain_proof(self) -> Result<Proof, Report> {
         let start = Instant::now();
         let result = match self.params.strategy {
-            ProofStrategy::BestEffort | ProofStrategy::FixedEffort => {
-                self.obtain_proof_best_effort()
-            }
+            ProofStrategy::BestEffort => self.obtain_proof_best_effort(),
+            ProofStrategy::FixedEffort => self.obtain_proof_fixed_effort(),
             ProofStrategy::OverTesting(eta0) => self.obtain_proof_overtesting(eta0),
-            _ => unimplemented!("Strategy unsupported: {:?}", self.params.strategy),
+            ProofStrategy::BestEffortAdaptive => self.obtain_proof_bea(),
         };
 
         let duration = start.elapsed();
@@ -62,6 +61,14 @@ impl Prover {
         println!("Prover time: {:?}", duration);
 
         result
+    }
+
+    fn obtain_proof_bea(self) -> Result<Proof, Report> {
+        unimplemented!("Best effort adaptive strategy")
+    }
+
+    fn obtain_proof_fixed_effort(self) -> Result<Proof, Report> {
+        self.obtain_proof_best_effort()
     }
 
     fn obtain_proof_best_effort(self) -> Result<Proof, Report> {
@@ -107,7 +114,7 @@ impl Prover {
         Ok(Proof {
             vset,
             extended_domain: Some(extended_domain),
-            params: self.params.clone(),
+            params: self.params,
         })
     }
 
@@ -153,6 +160,7 @@ impl InstrumentedVM {
     pub fn run(&mut self, input: usize) -> Result<RunResult, Report> {
         let mut hasher = Sha1::new();
         hasher.update(&self.program);
+        hasher.update(&input.to_be_bytes());
         let update_hash = |s: &[u8]| hasher.update(s);
         let output = run_vm(&mut self.vm, vec![input], update_hash)?;
         let hash = hasher.finalize();

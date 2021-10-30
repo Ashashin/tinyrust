@@ -54,7 +54,7 @@ mod tests {
             input_domain: 1..1000,
             expected_output: 0,
             strategy: prover::ProofStrategy::BestEffort,
-            kappa: 8,
+            kappa: 4,
             v: 1000,
         });
 
@@ -91,7 +91,5 @@ mod tests {
         };
 
         fake_proof.display();
-
-        println!("JSON: {}", fake_proof.export());
     }
 }
