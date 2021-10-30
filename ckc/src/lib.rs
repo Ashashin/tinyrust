@@ -9,11 +9,11 @@ mod tests {
     use tinyvm::{parser::Parser, run_vm};
 
     #[test]
-    fn run_fib() -> Result<(), Report> {
+    fn run_fibo() -> Result<(), Report> {
         let update_hash = |_: &[u8]| {};
 
-        let vm = Parser::load_program(&String::from("../assets/fib.tr"))?;
-        let result = run_vm(vm, vec![39], update_hash)?;
+        let mut vm = Parser::load_program(&String::from("../assets/fib.tr"))?;
+        let result = run_vm(&mut vm, vec![39], update_hash)?;
         println!("Result = {}", result);
 
         assert_eq!(result, 63245986);
@@ -22,35 +22,27 @@ mod tests {
 
     #[test]
     fn run_fib_with_instrumentation() -> Result<(), Report> {
-        let result = prover::run_instrumented_vm(&String::from("../assets/fib.tr"), 39)?;
+        let mut vm = prover::InstrumentedVM::new(&String::from("../assets/fib.tr"))?;
+        let result = vm.run(39)?;
         println!("Result = {:?}", result);
 
         let expected_output = 63245986;
-        let expected_hash = vec![
-            102, 171, 177, 23, 197, 105, 13, 18, //
-            161, 113, 165, 119, 114, 1, 250, 51, //
-            54, 239, 253, 9,
-        ];
 
         assert_eq!(result.output, expected_output);
-        assert_eq!(result.hash, expected_hash);
 
         Ok(())
     }
 
     #[test]
     fn run_collatz_with_instrumentation() -> Result<(), Report> {
-        let result = prover::run_instrumented_vm(&String::from("../assets/collatz_v0.tr"), 39)?;
+        let mut vm = prover::InstrumentedVM::new(&String::from("../assets/collatz_v0.tr"))?;
+
+        let result = vm.run(39)?;
         println!("Result = {:?}", result);
 
         let expected_output = 0;
-        let expected_hash = vec![
-            207, 67, 116, 21, 255, 105, 44, 150, 150, 218, 175, 129, 83, 176, 43, 246, 240, 54,
-            117, 194,
-        ];
 
         assert_eq!(result.output, expected_output);
-        assert_eq!(result.hash, expected_hash);
 
         Ok(())
     }
@@ -99,5 +91,7 @@ mod tests {
         };
 
         fake_proof.display();
+
+        println!("JSON: {}", fake_proof.export());
     }
 }

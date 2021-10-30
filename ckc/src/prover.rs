@@ -1,10 +1,11 @@
 use color_eyre::Report;
 use std::{fmt::Debug, ops::Range, path::Path, time::Instant};
-use tinyvm::{parser::Parser, run_vm};
+use tinyvm::{parser::Parser, run_vm, TinyVM};
 
 use crate::stats::{compute_delta_u, compute_v_min};
 use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
+use sha1::{Digest, Sha1};
 
 #[derive(Debug)]
 pub struct RunResult {
@@ -46,7 +47,7 @@ impl Prover {
         Self { params }
     }
 
-    pub fn obtain_proof(&self) -> Result<Proof, Report> {
+    pub fn obtain_proof(self) -> Result<Proof, Report> {
         let start = Instant::now();
         let result = match self.params.strategy {
             ProofStrategy::BestEffort | ProofStrategy::FixedEffort => {
@@ -63,11 +64,14 @@ impl Prover {
         result
     }
 
-    fn obtain_proof_best_effort(&self) -> Result<Proof, Report> {
+    fn obtain_proof_best_effort(self) -> Result<Proof, Report> {
         let mut vset = vec![];
+        let domain = self.params.input_domain.clone();
 
-        self.params.input_domain.clone().for_each(|i| {
-            let run_result = run_instrumented_vm(self.params.program_file.clone(), i).unwrap();
+        let mut vm = InstrumentedVM::new(&self.params.program_file)?;
+
+        domain.for_each(|i| {
+            let run_result = vm.run(i).unwrap();
             if self.select_witness(run_result) {
                 vset.push(i);
             }
@@ -76,18 +80,19 @@ impl Prover {
         Ok(Proof {
             vset,
             extended_domain: None,
-            params: self.params.clone(),
+            params: self.params,
         })
     }
 
-    fn obtain_proof_best_effort_adaptive(&self, eta0: f64) -> Result<Proof, Report> {
+    fn obtain_proof_best_effort_adaptive(self, eta0: f64) -> Result<Proof, Report> {
         let u = self.params.input_domain.end - self.params.input_domain.start;
         let threshold = compute_v_min(eta0, self.params.kappa, u);
 
         let mut vset = vec![];
+        let mut vm = InstrumentedVM::new(&self.params.program_file)?;
 
         for i in self.params.input_domain.clone() {
-            let run_result = run_instrumented_vm(self.params.program_file.clone(), i).unwrap();
+            let run_result = vm.run(i).unwrap();
             if self.select_witness(run_result) {
                 vset.push(i);
             }
@@ -99,11 +104,11 @@ impl Prover {
         Ok(Proof {
             vset,
             extended_domain: None,
-            params: self.params.clone(),
+            params: self.params,
         })
     }
 
-    fn obtain_proof_overtesting(&self, eta0: f64) -> Result<Proof, Report> {
+    fn obtain_proof_overtesting(self, eta0: f64) -> Result<Proof, Report> {
         let start = self.params.input_domain.start;
         let end = self.params.input_domain.end;
 
@@ -112,8 +117,10 @@ impl Prover {
 
         let mut vset = vec![];
 
+        let mut vm = InstrumentedVM::new(&self.params.program_file)?;
+
         extended_domain.clone().for_each(|i| {
-            let run_result = run_instrumented_vm(self.params.program_file.clone(), i).unwrap();
+            let run_result = vm.run(i).unwrap();
             if self.select_witness(run_result) {
                 vset.push(i);
             }
@@ -122,7 +129,7 @@ impl Prover {
         Ok(Proof {
             vset,
             extended_domain: Some(extended_domain),
-            params: self.params.clone(),
+            params: self.params,
         })
     }
 
@@ -149,26 +156,34 @@ pub fn validate_hash(hash: Vec<u8>, kappa: usize) -> bool {
     true
 }
 
-pub fn run_instrumented_vm<P>(filename: P, input: usize) -> Result<RunResult, Report>
-where
-    P: AsRef<Path> + Debug,
-{
-    use sha1::{Digest, Sha1};
+pub struct InstrumentedVM {
+    vm: TinyVM,
+    program: String,
+}
 
-    let vm = Parser::load_program(&filename)?;
+impl InstrumentedVM {
+    pub fn new<P>(filename: P) -> Result<Self, Report>
+    where
+        P: AsRef<Path> + Debug,
+    {
+        let vm = Parser::load_program(&filename)?;
+        let program = serde_json::to_string(&vm.instructions())?;
 
-    let mut hasher = Sha1::new();
-    hasher.update(&std::fs::read(filename)?);
-    let update_hash = |s: &[u8]| hasher.update(s);
+        Ok(Self { vm, program })
+    }
 
-    let output = run_vm(vm, vec![input], update_hash)?;
+    pub fn run(&mut self, input: usize) -> Result<RunResult, Report> {
+        let mut hasher = Sha1::new();
+        hasher.update(&self.program);
+        let update_hash = |s: &[u8]| hasher.update(s);
+        let output = run_vm(&mut self.vm, vec![input], update_hash)?;
+        let hash = hasher.finalize();
+        let hash = hash.as_slice().to_vec();
 
-    let hash = hasher.finalize();
-    let hash = hash.as_slice().to_vec();
-
-    Ok(RunResult {
-        input,
-        output,
-        hash,
-    })
+        Ok(RunResult {
+            input,
+            output,
+            hash,
+        })
+    }
 }

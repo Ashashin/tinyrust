@@ -115,6 +115,10 @@ impl TinyVM {
         self.display_memory();
     }
 
+    pub fn instructions(&self) -> Vec<Instruction> {
+        self.state.program.clone()
+    }
+
     pub fn run<F>(&mut self, mut callback: F) -> Result<usize, Report>
     where
         F: FnMut(&[u8]),

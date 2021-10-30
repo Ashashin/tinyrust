@@ -9,7 +9,7 @@ pub mod parser;
 pub mod vm;
 
 use parser::Parser;
-use vm::TinyVM;
+pub use vm::TinyVM;
 
 /// Command line options
 #[derive(Debug, StructOpt)]
@@ -29,7 +29,7 @@ pub fn from_cli() -> Result<(), Report> {
     let opt = Opt::from_args();
 
     // Create VM
-    let tinyvm = Parser::load_program(&opt.program_file)?;
+    let mut tinyvm = Parser::load_program(&opt.program_file)?;
 
     // Instantiate sha1 and add program and input tape to the hasher
     let mut hasher = Sha1::new();
@@ -50,7 +50,7 @@ pub fn from_cli() -> Result<(), Report> {
     let update_hash = |s: &[u8]| hasher.update(s);
 
     // Run program
-    let output = run_vm(tinyvm, input, update_hash)?;
+    let output = run_vm(&mut tinyvm, input, update_hash)?;
 
     // Finalize hashing and write to file
     let hash = hasher.finalize();
@@ -60,7 +60,7 @@ pub fn from_cli() -> Result<(), Report> {
     Ok(())
 }
 
-pub fn run_vm<F>(mut tinyvm: TinyVM, input: Vec<usize>, callback: F) -> Result<usize, Report>
+pub fn run_vm<F>(tinyvm: &mut TinyVM, input: Vec<usize>, callback: F) -> Result<usize, Report>
 where
     F: FnMut(&[u8]),
 {
