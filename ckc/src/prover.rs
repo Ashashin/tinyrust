@@ -2,7 +2,7 @@ use color_eyre::Report;
 use std::{fmt::Debug, ops::Range, path::Path, time::Instant};
 use tinyvm::{parser::Parser, run_vm};
 
-use crate::stats::compute_delta_u;
+use crate::stats::{compute_delta_u, compute_v_min};
 use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +17,7 @@ pub struct RunResult {
 pub enum ProofStrategy {
     FixedEffort,
     BestEffort,
-    BestEffortAdaptive,
+    BestEffortAdaptive(f64),
     OverTesting(f64),
 }
 
@@ -52,8 +52,8 @@ impl Prover {
             ProofStrategy::BestEffort | ProofStrategy::FixedEffort => {
                 self.obtain_proof_best_effort()
             }
+            ProofStrategy::BestEffortAdaptive(eta0) => self.obtain_proof_best_effort_adaptive(eta0),
             ProofStrategy::OverTesting(eta0) => self.obtain_proof_overtesting(eta0),
-            _ => unimplemented!("Strategy unsupported: {:?}", self.params.strategy),
         };
 
         let duration = start.elapsed();
@@ -65,14 +65,37 @@ impl Prover {
 
     fn obtain_proof_best_effort(&self) -> Result<Proof, Report> {
         let mut vset = vec![];
-        let mut trials = 0;
+
         self.params.input_domain.clone().for_each(|i| {
-            trials += 1;
             let run_result = run_instrumented_vm(self.params.program_file.clone(), i).unwrap();
             if self.select_witness(run_result) {
                 vset.push(i);
             }
         });
+
+        Ok(Proof {
+            vset,
+            extended_domain: None,
+            params: self.params.clone(),
+        })
+    }
+
+    fn obtain_proof_best_effort_adaptive(&self, eta0: f64) -> Result<Proof, Report> {
+        let u = self.params.input_domain.end - self.params.input_domain.start;
+        let threshold = compute_v_min(eta0, self.params.kappa, u);
+
+        let mut vset = vec![];
+
+        for i in self.params.input_domain.clone() {
+            let run_result = run_instrumented_vm(self.params.program_file.clone(), i).unwrap();
+            if self.select_witness(run_result) {
+                vset.push(i);
+            }
+            if vset.len() > threshold {
+                break;
+            }
+        }
+
         Ok(Proof {
             vset,
             extended_domain: None,
@@ -88,15 +111,14 @@ impl Prover {
         let extended_domain = start..(end + delta);
 
         let mut vset = vec![];
-        let mut trials = 0;
 
         extended_domain.clone().for_each(|i| {
-            trials += 1;
             let run_result = run_instrumented_vm(self.params.program_file.clone(), i).unwrap();
             if self.select_witness(run_result) {
                 vset.push(i);
             }
         });
+
         Ok(Proof {
             vset,
             extended_domain: Some(extended_domain),

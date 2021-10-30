@@ -89,7 +89,7 @@ mod tests {
                     expected_output: 33,
                     kappa: 12,
                     v: 3,
-                    strategy: prover::ProofStrategy::BestEffortAdaptive,
+                    strategy: prover::ProofStrategy::BestEffortAdaptive(0.99),
                 },
                 extended_domain: None,
             },

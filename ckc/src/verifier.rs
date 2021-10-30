@@ -70,9 +70,8 @@ impl Verifier {
         let result = match proof.params.strategy {
             ProofStrategy::FixedEffort => Self::check_proof_fixed_effort(proof, epsilon),
             ProofStrategy::BestEffort => Self::check_proof_best_effort(proof),
-            ProofStrategy::OverTesting(eta0) => Self::check_proof_overtesting(proof, eta0),
-
-            _ => unimplemented!("Unsupported proof strategy: {:?}", proof.params.strategy),
+            ProofStrategy::BestEffortAdaptive(_eta0) => Self::check_proof_best_effort(proof),
+            ProofStrategy::OverTesting(_eta0) => Self::check_proof_overtesting(proof),
         };
 
         let duration = start.elapsed();
@@ -125,7 +124,7 @@ impl Verifier {
         }
     }
 
-    fn check_proof_overtesting(proof: Proof, _eta0: f64) -> ProofReport {
+    fn check_proof_overtesting(proof: Proof) -> ProofReport {
         let u = proof.params.input_domain.end - proof.params.input_domain.start;
         let kappa = proof.params.kappa;
 

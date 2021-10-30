@@ -1,5 +1,5 @@
 pub fn compute_eta(kappa: u64, u: usize, v: usize) -> f64 {
-    let p = 1.0 - (kappa as f64) / 160.0;
+    let p = derive_p(kappa);
     let u = u as f64;
     let v = v as f64;
     let term1 = v - u * p;
@@ -9,7 +9,7 @@ pub fn compute_eta(kappa: u64, u: usize, v: usize) -> f64 {
 }
 
 pub fn compute_q(kappa: u64, u: usize, r: usize) -> f64 {
-    let p = 1.0 - (kappa as f64) / 160.0;
+    let p = derive_p(kappa);
     let term1 = (1.0 - p).powf((u - r) as f64);
     let term2 = approx_binomial(u - 1, r - 1);
 
@@ -35,7 +35,7 @@ pub fn approx_binomial(n: usize, k: usize) -> f64 {
 pub fn compute_delta_u(eta0: f64, kappa: u64, u: usize, v: usize) -> usize {
     use statrs::function::erf::erfc_inv;
 
-    let p = 1.0 - (kappa as f64) / 160.0;
+    let p = derive_p(kappa);
     let alpha = erfc_inv(2.0 * eta0);
 
     ((u as f64)
@@ -46,6 +46,20 @@ pub fn compute_delta_u(eta0: f64, kappa: u64, u: usize, v: usize) -> usize {
             / p) as usize
 }
 
+pub fn compute_v_min(eta0: f64, kappa: u64, u: usize) -> usize {
+    use statrs::function::erf::erfc_inv;
+
+    let p = derive_p(kappa);
+    let alpha = erfc_inv(2.0 * eta0);
+    let beta = u as f64 * p;
+
+    (beta + (beta * (1.0 - p)).sqrt() * alpha) as usize
+}
+
+fn derive_p(kappa: u64) -> f64 {
+    ((kappa as f64).log2() - 160.0).exp2()
+}
+
 /// Computes 2F1 and returns `Some(value, error estimate)` on success
 //
 // Note: this relies on GSL, which may need to be installed:
@@ -53,7 +67,7 @@ pub fn compute_delta_u(eta0: f64, kappa: u64, u: usize, v: usize) -> usize {
 // or   brew install gsl
 //
 // In case of failure, debug information is printed out
-pub fn hyper_2f1(a: f64, b: f64, c: f64, x: f64) -> Option<(f64, f64)> {
+fn hyper_2f1(a: f64, b: f64, c: f64, x: f64) -> Option<(f64, f64)> {
     use rgsl::{hypergeometric::hyperg_2F1_e, Value};
 
     let (code, res) = hyperg_2F1_e(a, b, c, x);
@@ -73,7 +87,7 @@ pub fn hyper_2f1(a: f64, b: f64, c: f64, x: f64) -> Option<(f64, f64)> {
 // or   brew install gsl
 //
 // In case of failure, debug information is printed out
-pub fn erfc(x: f64) -> Option<(f64, f64)> {
+fn erfc(x: f64) -> Option<(f64, f64)> {
     use rgsl::{error::erfc_e, Value};
 
     let (code, res) = erfc_e(x);
