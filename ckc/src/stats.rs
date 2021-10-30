@@ -12,7 +12,7 @@ pub fn compute_q(kappa: u64, u: usize, r: usize) -> f64 {
     if u < 1 || r < 1 {
         return 0.0;
     }
-    
+
     let p = derive_p(kappa);
     let term1 = (1.0 - p).powf((u - r) as f64);
     let term2 = approx_binomial(u - 1, r - 1);

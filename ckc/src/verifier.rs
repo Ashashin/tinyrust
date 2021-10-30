@@ -55,7 +55,7 @@ impl ProofReport {
             proof_q,
         ]
         .join("\n\t");
-        let report = format!("REPORT for {}\n\t{}\n\n{}", program, report, proof_valid);
+        let report = format!("REPORT for {}\n\t{}\n\t{}", program, report, proof_valid);
 
         println!("{}", report);
     }

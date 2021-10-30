@@ -50,13 +50,11 @@ impl Prover {
     pub fn obtain_proof(self) -> Result<Proof, Report> {
         let start = Instant::now();
         let result = match self.params.strategy {
-            ProofStrategy::BestEffort | ProofStrategy::FixedEffort => {
-                self.obtain_proof_best_effort()
-            }
-            ProofStrategy::BestEffortAdaptive(eta0) => self.obtain_proof_best_effort_adaptive(eta0),
+            ProofStrategy::BestEffort => self.obtain_proof_best_effort(),
+            ProofStrategy::FixedEffort => self.obtain_proof_fixed_effort(),
             ProofStrategy::OverTesting(eta0) => self.obtain_proof_overtesting(eta0),
+            ProofStrategy::BestEffortAdaptive(eta0) => self.obtain_proof_bea(eta0),
         };
-
         let duration = start.elapsed();
 
         println!("Prover time: {:?}", duration);
@@ -64,27 +62,7 @@ impl Prover {
         result
     }
 
-    fn obtain_proof_best_effort(self) -> Result<Proof, Report> {
-        let mut vset = vec![];
-        let domain = self.params.input_domain.clone();
-
-        let mut vm = InstrumentedVM::new(&self.params.program_file)?;
-
-        domain.for_each(|i| {
-            let run_result = vm.run(i).unwrap();
-            if self.select_witness(run_result) {
-                vset.push(i);
-            }
-        });
-
-        Ok(Proof {
-            vset,
-            extended_domain: None,
-            params: self.params,
-        })
-    }
-
-    fn obtain_proof_best_effort_adaptive(self, eta0: f64) -> Result<Proof, Report> {
+    fn obtain_proof_bea(self, eta0: f64) -> Result<Proof, Report> {
         let u = self.params.input_domain.end - self.params.input_domain.start;
         let threshold = compute_v_min(eta0, self.params.kappa, u);
 
@@ -100,6 +78,30 @@ impl Prover {
                 break;
             }
         }
+
+        Ok(Proof {
+            vset,
+            extended_domain: None,
+            params: self.params,
+        })
+    }
+
+    fn obtain_proof_fixed_effort(self) -> Result<Proof, Report> {
+        self.obtain_proof_best_effort()
+    }
+
+    fn obtain_proof_best_effort(self) -> Result<Proof, Report> {
+        let mut vset = vec![];
+        let domain = self.params.input_domain.clone();
+
+        let mut vm = InstrumentedVM::new(&self.params.program_file)?;
+
+        domain.for_each(|i| {
+            let run_result = vm.run(i).unwrap();
+            if self.select_witness(run_result) {
+                vset.push(i);
+            }
+        });
 
         Ok(Proof {
             vset,
@@ -175,6 +177,7 @@ impl InstrumentedVM {
     pub fn run(&mut self, input: usize) -> Result<RunResult, Report> {
         let mut hasher = Sha1::new();
         hasher.update(&self.program);
+        hasher.update(&input.to_be_bytes());
         let update_hash = |s: &[u8]| hasher.update(s);
         let output = run_vm(&mut self.vm, vec![input], update_hash)?;
         let hash = hasher.finalize();
