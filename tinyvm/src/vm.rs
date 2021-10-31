@@ -128,7 +128,17 @@ impl TinyVM {
             self.step()?;
             self.state.process_state(&mut callback)
         }
+
         Ok(self.result)
+    }
+
+    pub fn reset_state(&mut self) {
+        self.state.running = false;
+        self.state.pc = 0;
+        self.state.flag = false;
+        self.state.registers = vec![0; self.params.registers.into()];
+        self.state.tape = vec![];
+        self.state.memory = vec![];
     }
 
     pub fn execute(&mut self, instr: Instruction) -> Result<usize, Report> {

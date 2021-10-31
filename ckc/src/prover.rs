@@ -178,11 +178,11 @@ impl InstrumentedVM {
     pub fn run(&mut self, input: usize) -> Result<RunResult, Report> {
         let mut hasher = Sha1::new();
         hasher.update(&self.program);
-        hasher.update(&input.to_be_bytes());
         let update_hash = |s: &[u8]| hasher.update(s);
         let output = run_vm(&mut self.vm, vec![input], update_hash)?;
         let hash = hasher.finalize();
         let hash = hash.as_slice().to_vec();
+        self.vm.reset_state();
 
         Ok(RunResult {
             input,
