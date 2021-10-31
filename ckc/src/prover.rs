@@ -44,6 +44,7 @@ pub struct Proof {
 
 impl Prover {
     pub fn new(params: ProverParams) -> Self {
+        assert(params.kappa < 160);
         Self { params }
     }
 
@@ -149,8 +150,8 @@ impl Prover {
 }
 
 pub fn validate_hash(hash: Vec<u8>, kappa: usize) -> bool {
-    for hash_val in hash.view_bits::<Lsb0>().iter().take(kappa) {
-        if !hash_val {
+    for hash_val in hash.view_bits::<Msb0>().iter().take(160 - kappa) {
+        if *hash_val {
             return false;
         }
     }

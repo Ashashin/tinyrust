@@ -54,7 +54,7 @@ mod tests {
             input_domain: 1..1000,
             expected_output: 0,
             strategy: prover::ProofStrategy::BestEffort,
-            kappa: 4,
+            kappa: 155,
             v: 1000,
         });
 

@@ -61,7 +61,7 @@ pub fn compute_v_min(eta0: f64, kappa: u64, u: usize) -> usize {
 }
 
 fn derive_p(kappa: u64) -> f64 {
-    ((kappa as f64).log2() - 160.0).exp2()
+    (kappa as f64 - 160.0).exp2()
 }
 
 /// Computes 2F1 and returns `Some(value, error estimate)` on success
