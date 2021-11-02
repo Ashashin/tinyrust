@@ -1,5 +1,9 @@
+use statrs::{
+    distribution::{DiscreteCDF, NegativeBinomial},
+    function::erf::{erfc, erfc_inv},
+};
+
 pub fn compute_eta(kappa: u64, u: usize, v: usize) -> f64 {
-    use statrs::function::erf::erfc;
     let p = derive_p(kappa);
     let u = u as f64;
     let v = v as f64;
@@ -10,9 +14,6 @@ pub fn compute_eta(kappa: u64, u: usize, v: usize) -> f64 {
 }
 
 pub fn compute_q(kappa: u64, u: usize, r: usize) -> f64 {
-    //use special_fun::FloatSpecial;
-    use statrs::distribution::{DiscreteCDF, NegativeBinomial};
-
     if u < 1 || r < 1 {
         return 0.0;
     }
@@ -25,8 +26,6 @@ pub fn compute_q(kappa: u64, u: usize, r: usize) -> f64 {
 }
 
 pub fn compute_delta_u(eta0: f64, kappa: u64, u: usize, v: usize) -> usize {
-    use statrs::function::erf::erfc_inv;
-
     let p = derive_p(kappa);
     let alpha = erfc_inv(2.0 * eta0);
 
@@ -39,8 +38,6 @@ pub fn compute_delta_u(eta0: f64, kappa: u64, u: usize, v: usize) -> usize {
 }
 
 pub fn compute_v_min(eta0: f64, kappa: u64, u: usize) -> usize {
-    use statrs::function::erf::erfc_inv;
-
     let p = derive_p(kappa);
     let alpha = erfc_inv(2.0 * eta0);
     let beta = u as f64 * p;

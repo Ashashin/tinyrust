@@ -1,95 +1,40 @@
-pub mod prover;
+mod proof;
+mod prover;
 mod stats;
-pub mod verifier;
+mod verifier;
+mod vm;
+
+pub use proof::{ProofParams, ProofStrategy};
+pub use prover::Prover;
+pub use verifier::Verifier;
 
 #[cfg(test)]
 mod tests {
     use crate::*;
     use color_eyre::Report;
-    use tinyvm::parser::Parser;
-
-    #[test]
-    fn run_fibo() -> Result<(), Report> {
-        let mut vm = Parser::load_program(&String::from("../assets/fib.tr"))?;
-        let result = vm.run_vm(vec![39])?;
-        println!("Result = {}", result);
-
-        assert_eq!(result, 63245986);
-        Ok(())
-    }
-
-    #[test]
-    fn run_fib_with_instrumentation() -> Result<(), Report> {
-        let mut vm = prover::InstrumentedVM::new(&String::from("../assets/fib.tr"))?;
-        let result = vm.run(39)?;
-        println!("Result = {:?}", result);
-
-        let expected_output = 63245986;
-
-        assert_eq!(result.output, expected_output);
-
-        Ok(())
-    }
-
-    #[test]
-    fn run_collatz_with_instrumentation() -> Result<(), Report> {
-        let mut vm = prover::InstrumentedVM::new(&String::from("../assets/collatz_v0.tr"))?;
-
-        let result = vm.run(39)?;
-        println!("Result = {:?}", result);
-
-        let expected_output = 0;
-
-        assert_eq!(result.output, expected_output);
-
-        Ok(())
-    }
 
     #[test]
     fn run_prover_and_verifier() -> Result<(), Report> {
-        let prover = prover::Prover::new(prover::ProverParams {
-            program_file: String::from("../assets/collatz_v0.tr"),
-            input_domain: 1..1000,
-            expected_output: 0,
-            strategy: prover::ProofStrategy::BestEffort,
-            kappa: 155,
-            v: 1000,
-        });
+        let params = ProofParams::new(
+            "../assets/collatz_v0.tr",
+            1..1000,
+            0,
+            155,
+            1000,
+            ProofStrategy::BestEffort,
+        );
+        let prover = Prover::new(params);
 
         // Get proof
         let proof = prover.obtain_proof()?;
+        let verifier = Verifier::new(proof);
 
         // Check proof
         let epsilon = 0.99;
-        let result = verifier::Verifier::check_proof(proof, epsilon);
+        let result = verifier.check_proof(epsilon);
 
         result.display();
 
         Ok(())
-    }
-
-    #[test]
-    fn report_display() {
-        let fake_proof = verifier::ProofReport {
-            proof: prover::Proof {
-                vset: vec![],
-                params: prover::ProverParams {
-                    program_file: String::from("none.txt"),
-                    input_domain: 42..69,
-                    expected_output: 33,
-                    kappa: 12,
-                    v: 3,
-                    strategy: prover::ProofStrategy::BestEffortAdaptive(0.99),
-                },
-                extended_domain: None,
-            },
-            eta: 0.4,
-            q: 0.6,
-            valid: false,
-        };
-
-        fake_proof.display();
-
-        println!("JSON: {}", fake_proof.export());
     }
 }

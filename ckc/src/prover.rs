@@ -1,49 +1,19 @@
 use color_eyre::Report;
-use std::{fmt::Debug, ops::Range, path::Path, time::Instant};
-use tinyvm::{parser::Parser, TinyVM};
 
-use crate::stats::{compute_delta_u, compute_v_min};
-use bitvec::prelude::*;
-use serde::{Deserialize, Serialize};
-use sha1::{Digest, Sha1};
+use std::time::Instant;
 
-#[derive(Debug)]
-pub struct RunResult {
-    pub hash: Vec<u8>,
-    pub input: usize,
-    pub output: usize,
-}
-
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-pub enum ProofStrategy {
-    FixedEffort,
-    BestEffort,
-    BestEffortAdaptive(f64),
-    OverTesting(f64),
-}
+use crate::{
+    proof::{Proof, ProofParams, ProofStrategy},
+    stats::{compute_delta_u, compute_v_min},
+    vm::{validate_hash, InstrumentedVM, RunResult},
+};
 
 pub struct Prover {
-    params: ProverParams,
-}
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProverParams {
-    pub program_file: String,
-    pub input_domain: Range<usize>,
-    pub expected_output: usize,
-    pub kappa: u64,
-    pub v: usize,
-    pub strategy: ProofStrategy,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Proof {
-    pub vset: Vec<usize>,
-    pub extended_domain: Option<Range<usize>>,
-    pub params: ProverParams,
+    params: ProofParams,
 }
 
 impl Prover {
-    pub fn new(params: ProverParams) -> Self {
+    pub fn new(params: ProofParams) -> Self {
         assert!(params.kappa < 160);
         Self { params }
     }
@@ -146,48 +116,5 @@ impl Prover {
         }
 
         validate_hash(run_result.hash, self.params.kappa as usize)
-    }
-}
-
-pub fn validate_hash(hash: Vec<u8>, kappa: usize) -> bool {
-    for hash_val in hash.view_bits::<Msb0>().iter().take(160 - kappa) {
-        if *hash_val {
-            return false;
-        }
-    }
-
-    true
-}
-
-pub struct InstrumentedVM {
-    vm: TinyVM,
-    program: String,
-}
-
-impl InstrumentedVM {
-    pub fn new<P>(filename: P) -> Result<Self, Report>
-    where
-        P: AsRef<Path> + Debug,
-    {
-        let vm = Parser::load_program(&filename)?;
-        let program = serde_json::to_string(&vm.instructions())?;
-
-        Ok(Self { vm, program })
-    }
-
-    pub fn run(&mut self, input: usize) -> Result<RunResult, Report> {
-        let mut hasher = Sha1::new();
-        hasher.update(&self.program);
-        let update_hash = |s: &[u8]| hasher.update(s);
-        let output = self.vm.run_vm_with_callback(vec![input], update_hash)?;
-        let hash = hasher.finalize();
-        let hash = hash.as_slice().to_vec();
-        self.vm.reset_state();
-
-        Ok(RunResult {
-            input,
-            output,
-            hash,
-        })
     }
 }
