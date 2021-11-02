@@ -29,10 +29,10 @@ impl Verifier {
     pub fn check_proof(&self, epsilon: f64) -> ProofReport {
         let start = Instant::now();
         let result = match self.proof.params.strategy {
-            ProofStrategy::FixedEffort => Self::check_proof_fixed_effort(&self.proof, epsilon),
-            ProofStrategy::BestEffort => Self::check_proof_best_effort(&self.proof),
-            ProofStrategy::BestEffortAdaptive(_eta0) => Self::check_proof_best_effort(&self.proof),
-            ProofStrategy::OverTesting(_eta0) => Self::check_proof_overtesting(&self.proof),
+            ProofStrategy::FixedEffort => self.check_proof_fixed_effort(epsilon),
+            ProofStrategy::BestEffort => self.check_proof_best_effort(),
+            ProofStrategy::BestEffortAdaptive(_eta0) => self.check_proof_best_effort(),
+            ProofStrategy::OverTesting(_eta0) => self.check_proof_overtesting(),
         };
 
         let duration = start.elapsed();
@@ -42,7 +42,8 @@ impl Verifier {
         result
     }
 
-    fn check_proof_fixed_effort(proof: &Proof, epsilon: f64) -> ProofReport {
+    fn check_proof_fixed_effort(&self, epsilon: f64) -> ProofReport {
+        let proof = &self.proof;
         let u = proof.params.input_domain.end - proof.params.input_domain.start;
         let kappa = proof.params.kappa;
 
@@ -53,12 +54,13 @@ impl Verifier {
         let valid = !q.is_nan()
             && !eta.is_nan()
             && q > 1.0 - epsilon
-            && Self::validate_vset(proof, &proof.params.input_domain) == ValidationResult::Valid;
+            && self.validate_vset(&proof.params.input_domain) == ValidationResult::Valid;
 
         ProofReport::create(proof, eta, q, valid)
     }
 
-    fn check_proof_best_effort(proof: &Proof) -> ProofReport {
+    fn check_proof_best_effort(&self) -> ProofReport {
+        let proof = &self.proof;
         let u = proof.params.input_domain.end - proof.params.input_domain.start;
         let kappa = proof.params.kappa;
 
@@ -67,7 +69,7 @@ impl Verifier {
         let q = compute_q(kappa, u, v);
 
         let valid = matches!(
-            Self::validate_vset(proof, &proof.params.input_domain),
+            self.validate_vset(&proof.params.input_domain),
             ValidationResult::Valid | ValidationResult::ValidButTooFewHashes(_)
         ) && !q.is_nan()
             && !eta.is_nan();
@@ -75,7 +77,8 @@ impl Verifier {
         ProofReport::create(proof, eta, q, valid)
     }
 
-    fn check_proof_overtesting(proof: &Proof) -> ProofReport {
+    fn check_proof_overtesting(&self) -> ProofReport {
+        let proof = &self.proof;
         let u = proof.params.input_domain.end - proof.params.input_domain.start;
         let kappa = proof.params.kappa;
 
@@ -88,12 +91,14 @@ impl Verifier {
             _ => &proof.params.input_domain,
         };
 
-        let valid = matches!(Self::validate_vset(proof, domain), ValidationResult::Valid);
+        let valid = matches!(self.validate_vset(domain), ValidationResult::Valid);
 
         ProofReport::create(proof, eta, q, valid)
     }
 
-    fn validate_vset(proof: &Proof, domain: &Range<usize>) -> ValidationResult {
+    fn validate_vset(&self, domain: &Range<usize>) -> ValidationResult {
+        let proof = &self.proof;
+
         let enough_hashes = proof.vset.len() >= proof.params.v;
 
         let mut vm = match InstrumentedVM::new(&proof.params.program_file) {
