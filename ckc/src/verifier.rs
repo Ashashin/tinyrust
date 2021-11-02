@@ -6,26 +6,38 @@ use crate::{
     vm::{validate_hash, InstrumentedVM},
 };
 
+/// Enum of the possible outcome of the verification of the witnesses
 #[derive(PartialEq, Eq, Debug)]
 enum ValidationResult {
+    /// An incorrect hash was found in the given witnesses set
     IncorrectHash,
+    /// Program is not valid
     InvalidProgram,
+    /// Witness given is outside the agreed domain
     IncorrectInput(usize),
+    /// Program does not give exoected result
     IncorrectOutput(usize),
+    /// Runtime Error of the program
     ExecutionError,
+    /// No error but the number of witness if not enough
     ValidButTooFewHashes(usize),
+    /// Valid witnesses set
     Valid,
 }
 
+/// Verifier
 pub struct Verifier {
+    /// Proof being verified
     proof: Proof,
 }
 
 impl Verifier {
+    /// Create new verifier
     pub fn new(proof: Proof) -> Self {
         Self { proof }
     }
 
+    /// Validate proof
     pub fn check_proof(&self, epsilon: f64) -> ProofReport {
         let start = Instant::now();
         let result = match self.proof.params.strategy {
@@ -42,6 +54,7 @@ impl Verifier {
         result
     }
 
+    /// Validation for fixed effort
     fn check_proof_fixed_effort(&self, epsilon: f64) -> ProofReport {
         let proof = &self.proof;
         let u = proof.params.input_domain.end - proof.params.input_domain.start;
@@ -59,6 +72,7 @@ impl Verifier {
         ProofReport::create(proof, eta, q, valid)
     }
 
+    /// Validation for best effort
     fn check_proof_best_effort(&self) -> ProofReport {
         let proof = &self.proof;
         let u = proof.params.input_domain.end - proof.params.input_domain.start;
@@ -77,6 +91,7 @@ impl Verifier {
         ProofReport::create(proof, eta, q, valid)
     }
 
+    /// Validation for overtesting
     fn check_proof_overtesting(&self) -> ProofReport {
         let proof = &self.proof;
         let u = proof.params.input_domain.end - proof.params.input_domain.start;
@@ -96,6 +111,7 @@ impl Verifier {
         ProofReport::create(proof, eta, q, valid)
     }
 
+    /// Validating the witness set
     fn validate_vset(&self, domain: &Range<usize>) -> ValidationResult {
         let proof = &self.proof;
 

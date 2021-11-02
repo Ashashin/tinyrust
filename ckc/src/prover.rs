@@ -8,16 +8,20 @@ use crate::{
     vm::{validate_hash, InstrumentedVM, RunResult},
 };
 
+/// Prover
 pub struct Prover {
+    /// Params used for the validation of the proof
     params: ProofParams,
 }
 
 impl Prover {
+    /// Create the Prover
     pub fn new(params: ProofParams) -> Self {
         assert!(params.kappa < 160);
         Self { params }
     }
 
+    /// Get a proof for the claim
     pub fn obtain_proof(self) -> Result<Proof, Report> {
         let start = Instant::now();
         let result = match self.params.strategy {
@@ -33,6 +37,7 @@ impl Prover {
         result
     }
 
+    /// Proof for best effort adaptive
     fn obtain_proof_bea(self, eta0: f64) -> Result<Proof, Report> {
         let u = self.params.input_domain.end - self.params.input_domain.start;
         let threshold = compute_v_min(eta0, self.params.kappa, u);
@@ -57,10 +62,12 @@ impl Prover {
         })
     }
 
+    /// Proof for fixed effort
     fn obtain_proof_fixed_effort(self) -> Result<Proof, Report> {
         self.obtain_proof_best_effort()
     }
 
+    /// Proof for best effort
     fn obtain_proof_best_effort(self) -> Result<Proof, Report> {
         let mut vset = vec![];
         let domain = self.params.input_domain.clone();
@@ -81,6 +88,7 @@ impl Prover {
         })
     }
 
+    /// Proof for overtesting
     fn obtain_proof_overtesting(self, eta0: f64) -> Result<Proof, Report> {
         let start = self.params.input_domain.start;
         let end = self.params.input_domain.end;
@@ -106,6 +114,7 @@ impl Prover {
         })
     }
 
+    /// Picking the witness based on the program result
     fn select_witness(&self, run_result: RunResult) -> bool {
         if run_result.output != self.params.expected_output {
             return false;

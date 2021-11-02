@@ -2,25 +2,38 @@ use serde::{Deserialize, Serialize};
 
 use std::ops::Range;
 
+/// Enum representing the available strategies
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum ProofStrategy {
+    /// Fixed Effort: Verifier check if a specific threshold is obtained
     FixedEffort,
+    /// Best Effort: Prover gives everything he can
     BestEffort,
+    /// Best Effort Adaptive: Prover gives enough to obtain an acceptable proof
     BestEffortAdaptive(f64),
+    /// Overtesting: Proves goes beyond the claim to get enough valid samples
     OverTesting(f64),
 }
 
+/// Parameters used for the proof
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofParams {
+    /// The program used for the proof
     pub program_file: String,
+    /// The testing domain of the claim
     pub input_domain: Range<usize>,
+    /// The expected output of the program
     pub expected_output: usize,
+    /// The agreed upon hash max value
     pub kappa: u64,
+    /// The agreed upon number of witnesses
     pub v: usize,
+    /// The proof strategy
     pub strategy: ProofStrategy,
 }
 
 impl ProofParams {
+    /// Generate new params
     pub fn new(
         filename: &str,
         input_domain: Range<usize>,
@@ -40,22 +53,32 @@ impl ProofParams {
     }
 }
 
+/// Struct representing the proof
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Proof {
+    /// Witness set
     pub vset: Vec<usize>,
+    /// Extended domain (for overting strategy)
     pub extended_domain: Option<Range<usize>>,
+    /// Parameters of the proof
     pub params: ProofParams,
 }
 
+/// Report of the validity of the proof
 #[derive(Serialize)]
 pub struct ProofReport {
+    /// The proof being reported
     proof: Proof,
+    /// The probability of getting an acceptable proof
     eta: f64,
+    /// The probability of the proof being valid
     q: f64,
+    /// The conclusion of the report on whether the proof should be accepted
     valid: bool,
 }
 
 impl ProofReport {
+    /// Create a new report
     pub fn create(proof: &Proof, eta: f64, q: f64, valid: bool) -> Self {
         Self {
             proof: proof.clone(),
@@ -65,6 +88,7 @@ impl ProofReport {
         }
     }
 
+    /// Print the report
     pub fn display(&self) {
         let program = &self.proof.params.program_file;
         let proof_strategy = format!("Proof strategy: {:?}", self.proof.params.strategy);
@@ -98,6 +122,7 @@ impl ProofReport {
         println!("{}", report);
     }
 
+    /// Export the report as the json
     pub fn export(&self) -> String {
         serde_json::to_string(&self).unwrap()
     }

@@ -6,19 +6,27 @@ use std::{fmt::Debug, path::Path};
 
 use tinyvm::{parser::Parser, TinyVM};
 
+/// Strucr reprensenting the result of the instrumented VM run
 #[derive(Debug)]
 pub struct RunResult {
+    /// Hash of the program run
     pub hash: Vec<u8>,
+    /// Input value
     pub input: usize,
+    /// Program output
     pub output: usize,
 }
 
+/// VM used in CKC to hash the different states
 pub struct InstrumentedVM {
+    /// The VM instance
     vm: TinyVM,
+    /// The executed program
     program: String,
 }
 
 impl InstrumentedVM {
+    /// Create a new VM for a given program
     pub fn new<P>(filename: P) -> Result<Self, Report>
     where
         P: AsRef<Path> + Debug,
@@ -29,6 +37,7 @@ impl InstrumentedVM {
         Ok(Self { vm, program })
     }
 
+    /// Run the VM with the given input
     pub fn run(&mut self, input: usize) -> Result<RunResult, Report> {
         let mut hasher = Sha1::new();
         hasher.update(&self.program);
@@ -46,6 +55,7 @@ impl InstrumentedVM {
     }
 }
 
+/// Validate the output hash
 pub fn validate_hash(hash: Vec<u8>, kappa: usize) -> bool {
     for hash_val in hash.view_bits::<Msb0>().iter().take(160 - kappa) {
         if *hash_val {
