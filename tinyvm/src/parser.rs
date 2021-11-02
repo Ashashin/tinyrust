@@ -1,3 +1,12 @@
+use color_eyre::{
+    eyre::{eyre, WrapErr},
+    Help, Report,
+};
+use lazy_static::lazy_static;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use tracing::info;
+
 use std::{
     collections::HashMap,
     fmt::Debug,
@@ -6,45 +15,49 @@ use std::{
     path::Path,
 };
 
-use serde::{Deserialize, Serialize};
-
 use crate::vm::TinyVM;
 
-use color_eyre::{
-    eyre::{eyre, WrapErr},
-    Help, Report,
-};
-
-use lazy_static::lazy_static;
-use regex::Regex;
-use tracing::info;
-
+/// Defines a register
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Register {
+    /// Register index
     pub index: u16,
 }
 
+/// Defines a label
 #[derive(Debug)]
 pub struct Label {
+    /// Label identifier
     ident: String,
+    /// Address of the label
     address: usize,
+    /// Line referenced by the label
     line: usize,
 }
 
+/// tinyRAM VM params
 #[derive(Debug, Copy, Clone)]
 pub struct Params {
+    /// Version of the tinyRAM spec
     version: f32,
+    /// W parameter: Word size
     pub word_size: u16,
+    /// K parameter: Number of registers
     pub registers: u16,
 }
 
+/// Enum encompassing all value types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Argument {
+    /// Value
     Imm(i64),
+    /// Register
     Reg(Register),
+    /// Label
     Label(String),
 }
 
+/// Enum listing all instructions of the tinyRAM VM
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Instruction {
     And(Register, Register, Argument),
@@ -81,9 +94,11 @@ pub enum Instruction {
     Answer(Argument),
 }
 
+/// Parser form the tinyRAM programs
 pub struct Parser;
 
 impl Parser {
+    /// Parse tapefile into a valide tape
     pub fn load_tape_file<P>(filename: &P) -> Result<Vec<usize>, Report>
     where
         P: AsRef<Path> + Debug,
@@ -103,6 +118,7 @@ impl Parser {
         Ok(tape)
     }
 
+    /// Parse tinyRAM program into a tinyRAM VM
     pub fn load_program<P>(filename: &P) -> Result<TinyVM, Report>
     where
         P: AsRef<Path> + Debug,
@@ -153,6 +169,7 @@ impl Parser {
         Ok(TinyVM::new(params, instructions, resolved_labels))
     }
 
+    /// Check if tinyRAM params are valid
     #[allow(clippy::float_cmp)]
     fn check_params(params: Params) -> Result<(), Report> {
         if params.version != 1.0 {
@@ -164,6 +181,7 @@ impl Parser {
         }
     }
 
+    /// Check if parsed instructions are valid
     fn check_instructions(
         params: Params,
         instructions: &[Instruction],
@@ -234,6 +252,7 @@ impl Parser {
         Ok(())
     }
 
+    /// Check if labels are valid and resolve the labels
     fn check_and_resolve_labels(labels: &[Label]) -> Result<HashMap<String, usize>, Report> {
         info!("Resolving labels");
 
@@ -251,6 +270,7 @@ impl Parser {
         Ok(hashmap)
     }
 
+    /// Read the timyRAM VM params from the first line of the program file
     fn read_params(first_line: &str) -> Result<Params, Report> {
         let parts: Vec<_> = first_line.split_whitespace().collect();
 
@@ -273,6 +293,7 @@ impl Parser {
         })
     }
 
+    /// Parse instruction from the current line
     fn parse_instruction(line: &str) -> Option<Instruction> {
         let mut parts: Vec<_> = line.split_whitespace().collect();
 
@@ -390,6 +411,7 @@ impl Parser {
         Some(instr)
     }
 
+    /// Parse value
     fn parse_immediate(s: &str) -> Option<i64> {
         match s.parse::<i64>() {
             Ok(x) => Some(x),
@@ -397,6 +419,7 @@ impl Parser {
         }
     }
 
+    /// Parse current argument
     fn parse_argument(s: &str) -> Option<Argument> {
         if let Some(reg) = Self::parse_register(s) {
             Some(Argument::Reg(reg))
@@ -407,6 +430,7 @@ impl Parser {
         }
     }
 
+    /// Parse registers
     fn parse_register(s: &str) -> Option<Register> {
         if Self::starts_with(s, 'r') {
             s[1..].parse::<u16>().map(|index| Register { index }).ok()
@@ -415,6 +439,7 @@ impl Parser {
         }
     }
 
+    /// Parse whitespaces
     fn parse_whitespace(line: &str) -> Option<()> {
         if line.split_whitespace().collect::<String>().is_empty() {
             Some(())
@@ -423,6 +448,7 @@ impl Parser {
         }
     }
 
+    /// Parse labels
     fn parse_label(line: &str) -> Option<String> {
         if Self::ends_with(line, ':') {
             Self::parse_label_ident(&line[..line.len() - 1])
@@ -431,6 +457,7 @@ impl Parser {
         }
     }
 
+    /// Parse the label indentifier
     fn parse_label_ident(s: &str) -> Option<String> {
         lazy_static! {
             static ref RE: Regex = Regex::new("_[0-9a-zA-Z_]+").unwrap();
@@ -443,6 +470,7 @@ impl Parser {
         }
     }
 
+    /// Parse comments
     fn parse_comment(line: &str) -> Option<()> {
         if Self::starts_with(line, ';') {
             Some(())
@@ -450,6 +478,8 @@ impl Parser {
             None
         }
     }
+
+    /// Check if line starts with designated character
     fn starts_with(line: &str, c: char) -> bool {
         match line.chars().next() {
             Some(x) => x == c,
@@ -457,6 +487,7 @@ impl Parser {
         }
     }
 
+    /// Check if line ends with designated character
     fn ends_with(line: &str, c: char) -> bool {
         let n = line.len() - 1;
         match line.chars().nth(n) {
@@ -465,6 +496,7 @@ impl Parser {
         }
     }
 
+    /// Read lines from the program files
     fn read_lines<P>(filename: P) -> Result<io::Lines<io::BufReader<File>>, io::Error>
     where
         P: AsRef<Path>,

@@ -1,22 +1,31 @@
-use color_eyre::Report;
+use color_eyre::{eyre::eyre, Report};
 use tracing::info;
 
 use std::collections::HashMap;
 
 use crate::parser::{Argument, Instruction, Params, Register};
 
+/// Struct reprensenting the current state of the tinyRAM VM
 #[derive(Debug)]
 struct State {
+    /// Indicates is the VM is currently running
     running: bool,
+    /// The program counter of the VM
     pc: usize,
+    /// Indicates if the flag is raised
     flag: bool,
+    /// Represents the 8-bits registers of the VM
     registers: Vec<usize>,
+    /// Represents the program run by the VM
     program: Vec<Instruction>,
+    /// Reprensents the tape storing the inputs
     tape: Vec<usize>,
+    /// Represents the memory of the VM
     memory: Vec<usize>,
 }
 
 impl State {
+    /// Init state
     fn init(program: Vec<Instruction>, register_nb: usize) -> Self {
         Self {
             running: false,
@@ -28,6 +37,8 @@ impl State {
             memory: vec![],
         }
     }
+
+    /// Allow the state to be processed by a callback
     fn process_state<F>(&self, func: &mut F)
     where
         F: FnMut(&[u8]),
@@ -43,6 +54,8 @@ impl State {
             func(&el.to_be_bytes());
         }
     }
+
+    /// Reset state
     fn reset(&mut self) {
         let reg = self.registers.len();
 
@@ -54,15 +67,22 @@ impl State {
         self.memory = vec![];
     }
 }
+
+/// Structure representing the tinyRAM VM
 #[derive(Debug)]
 pub struct TinyVM {
+    /// VM params
     params: Params,
+    /// Hashmap of the labels and their positions
     resolved_labels: HashMap<String, usize>,
+    /// State of the VM
     state: State,
+    /// Output of the program run by the VM
     result: usize,
 }
 
 impl TinyVM {
+    /// Create a new VM from a program
     pub fn new(
         params: Params,
         program: Vec<Instruction>,
@@ -78,21 +98,25 @@ impl TinyVM {
         }
     }
 
+    /// Load an input tape into the VM
     pub fn load_tape(&mut self, tape: Vec<usize>) {
         self.state.tape = tape;
     }
 
-    pub fn start(&mut self) {
+    /// Launch the VM
+    fn start(&mut self) {
         info!("TinyVM started");
         self.state.running = true;
     }
 
-    pub fn stop(&mut self) {
+    /// Halt the VM
+    fn stop(&mut self) {
         info!("TinyVM stopped");
         self.state.running = false;
     }
 
-    pub fn step(&mut self) -> Result<(), Report> {
+    /// Run the current instruction marked by the pc
+    fn step(&mut self) -> Result<(), Report> {
         let instr = {
             match self.state.program.get(self.state.pc) {
                 Some(instr) => instr.clone(),
@@ -105,11 +129,13 @@ impl TinyVM {
         Ok(())
     }
 
-    pub fn display_memory(&self) {
+    /// Print the current state of the memory
+    fn display_memory(&self) {
         info!("memory: {:?}", self.state.memory);
     }
 
-    pub fn display_registers(&self) {
+    /// Print the current state of the registers
+    fn display_registers(&self) {
         let reg_data: String = self
             .state
             .registers
@@ -122,17 +148,20 @@ impl TinyVM {
         info!("registers: ({})", reg_data);
     }
 
-    pub fn display_state(&self) {
+    /// Print the current state of the VM
+    fn display_state(&self) {
         info!("flag: {}, pc: {}", self.state.flag, self.state.pc);
         self.display_registers();
         self.display_memory();
     }
 
+    /// Return the instructions from the current program loaded in the VM
     pub fn instructions(&self) -> Vec<Instruction> {
         self.state.program.clone()
     }
 
-    pub fn run<F>(&mut self, mut callback: F) -> Result<usize, Report>
+    /// Run the program loaded in the VM
+    fn run<F>(&mut self, mut callback: F) -> Result<usize, Report>
     where
         F: FnMut(&[u8]),
     {
@@ -145,6 +174,7 @@ impl TinyVM {
         Ok(self.result)
     }
 
+    /// Run the VM with a callback and the selected input
     pub fn run_vm<F>(&mut self, input: Vec<usize>, callback: F) -> Result<usize, Report>
     where
         F: FnMut(&[u8]),
@@ -165,12 +195,39 @@ impl TinyVM {
             x => Err(eyre!("🔥 Program terminated with error code {} 🔥", x)),
         }
     }
+
+    /// Displays the output of the program
+    pub fn output(&self) -> Option<&usize> {
+        self.state.memory.first()
+    }
+
+    /// Reset the state of the VM to initial state
     pub fn reset_state(&mut self) {
         self.state.reset();
     }
+
+    /// Read value from the designated register
+    fn read_reg(&self, reg: &Register) -> usize {
+        self.state.registers[reg.index as usize]
     }
 
-    pub fn execute(&mut self, instr: Instruction) -> Result<usize, Report> {
+    /// Write value from the designated register
+    fn write_reg(&mut self, reg: &Register, val: usize) {
+        self.state.registers[reg.index as usize] = val;
+    }
+
+    /// Convert unsigned to signed
+    fn to_signed(x: u64) -> i64 {
+        unsafe { std::mem::transmute::<u64, i64>(x) }
+    }
+
+    /// Convert signed to unsigned
+    fn to_unsigned(x: i64) -> u64 {
+        unsafe { std::mem::transmute::<i64, u64>(x) }
+    }
+
+    /// Execute the instruction at the current pc
+    fn execute(&mut self, instr: Instruction) -> Result<usize, Report> {
         let mut next_pc = self.state.pc + 1;
 
         match instr {
@@ -226,6 +283,7 @@ impl TinyVM {
         Ok(next_pc)
     }
 
+    /// Resolve argument as label, register or value
     fn resolve(&self, arg: &Argument) -> usize {
         match arg {
             Argument::Imm(x) => Self::to_unsigned(*x) as usize,
@@ -234,14 +292,12 @@ impl TinyVM {
         }
     }
 
+    /// Defines the segfault instruction
     fn segfault() -> Instruction {
         Instruction::Answer(Argument::Imm(1))
     }
 
-    pub fn output(&self) -> Option<&usize> {
-        self.state.memory.first()
-    }
-
+    /// Defines the TinyRAM "and" instruction
     fn and(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
@@ -253,6 +309,7 @@ impl TinyVM {
         self.state.flag = zero;
     }
 
+    /// Defines the TinyRAM "or" instruction
     fn or(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
@@ -264,6 +321,7 @@ impl TinyVM {
         self.state.flag = zero;
     }
 
+    /// Defines the TinyRAM "xor" instruction
     fn xor(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
@@ -275,6 +333,7 @@ impl TinyVM {
         self.state.flag = zero;
     }
 
+    /// Defines the TinyRAM "not" instruction
     fn not(&mut self, reg: &Register, arg: &Argument) {
         let value = self.resolve(arg);
 
@@ -285,6 +344,7 @@ impl TinyVM {
         self.state.flag = zero;
     }
 
+    /// Defines the TinyRAM "add" instruction
     fn add(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let msb_mask = 1 << (self.params.word_size - 1);
         let value_mask = (1 << self.params.word_size) - 1;
@@ -299,6 +359,7 @@ impl TinyVM {
         self.state.flag = carry;
     }
 
+    /// Defines the TinyRAM "sub" instruction
     fn sub(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let msb_mask = 1 << (self.params.word_size - 1);
         let value_mask = (1 << self.params.word_size) - 1;
@@ -313,6 +374,7 @@ impl TinyVM {
         self.state.flag = !carry;
     }
 
+    /// Defines the TinyRAM "mull" instruction
     fn mull(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value_mask = (1 << self.params.word_size) - 1;
 
@@ -327,6 +389,7 @@ impl TinyVM {
         self.state.flag = carry;
     }
 
+    /// Defines the TinyRAM "udiv" instruction
     fn udiv(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value_mask = (1 << self.params.word_size) - 1;
 
@@ -343,6 +406,7 @@ impl TinyVM {
         self.state.flag = flag;
     }
 
+    /// Defines the TinyRAM "umod" instruction
     fn umod(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value_mask = (1 << self.params.word_size) - 1;
 
@@ -359,6 +423,7 @@ impl TinyVM {
         self.state.flag = flag;
     }
 
+    /// Defines the TinyRAM "shl" instruction
     fn shl(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
         let value2 = self.read_reg(reg2);
@@ -372,6 +437,7 @@ impl TinyVM {
         self.state.flag = carry;
     }
 
+    /// Defines the TinyRAM "shr" instruction
     fn shr(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
         let value2 = self.read_reg(reg2);
@@ -385,6 +451,7 @@ impl TinyVM {
         self.state.flag = carry;
     }
 
+    /// Defines the TinyRAM "cmpe" instruction
     fn cmpe(&mut self, reg: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
         let value2 = self.read_reg(reg);
@@ -393,6 +460,7 @@ impl TinyVM {
         self.state.flag = equal;
     }
 
+    /// Defines the TinyRAM "cmpa" instruction
     fn cmpa(&mut self, reg: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
         let value2 = self.read_reg(reg);
@@ -401,6 +469,7 @@ impl TinyVM {
         self.state.flag = above;
     }
 
+    /// Defines the TinyRAM "cmpae" instruction
     fn cmpae(&mut self, reg: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
         let value2 = self.read_reg(reg);
@@ -409,14 +478,7 @@ impl TinyVM {
         self.state.flag = above;
     }
 
-    fn to_signed(x: u64) -> i64 {
-        unsafe { std::mem::transmute::<u64, i64>(x) }
-    }
-
-    fn to_unsigned(x: i64) -> u64 {
-        unsafe { std::mem::transmute::<i64, u64>(x) }
-    }
-
+    /// Defines the TinyRAM "cmpg" instruction
     fn cmpg(&mut self, reg: &Register, arg: &Argument) {
         let value1 = Self::to_signed(self.resolve(arg) as u64);
         let value2 = Self::to_signed(self.read_reg(reg) as u64);
@@ -425,6 +487,7 @@ impl TinyVM {
         self.state.flag = above;
     }
 
+    /// Defines the TinyRAM "cmpge" instruction
     fn cmpge(&mut self, reg: &Register, arg: &Argument) {
         let value1 = Self::to_signed(self.resolve(arg) as u64);
         let value2 = Self::to_signed(self.read_reg(reg) as u64);
@@ -433,16 +496,19 @@ impl TinyVM {
         self.state.flag = above;
     }
 
+    /// Defines the TinyRAM "amswer" instruction
     fn answer(&mut self, arg: &Argument) {
         let retval = self.resolve(arg);
         self.result = retval;
         self.stop();
     }
 
+    /// Defines the TinyRAM "jmp" instruction
     fn jmp(&mut self, arg: &Argument) -> usize {
         self.resolve(arg)
     }
 
+    /// Defines the TinyRAM "cjmp" instruction
     fn cjmp(&mut self, arg: &Argument) -> usize {
         if !self.state.flag {
             self.state.pc + 1
@@ -451,6 +517,7 @@ impl TinyVM {
         }
     }
 
+    /// Defines the TinyRAM "cnjmp" instruction
     fn cnjmp(&mut self, arg: &Argument) -> usize {
         if self.state.flag {
             self.state.pc + 1
@@ -459,6 +526,7 @@ impl TinyVM {
         }
     }
 
+    /// Defines the TinyRAM "read" instruction
     fn read(&mut self, reg: &Register, arg: &Argument) {
         let tape = self.resolve(arg);
 
@@ -483,17 +551,20 @@ impl TinyVM {
         self.write_reg(reg, value);
     }
 
+    /// Defines the TinyRAM "mov" instruction
     fn mov(&mut self, reg: &Register, arg: &Argument) {
         let value = self.resolve(arg);
         self.write_reg(reg, value);
     }
 
+    /// Defines the TinyRAM "cmov" instruction
     fn cmov(&mut self, reg: &Register, arg: &Argument) {
         if self.state.flag {
             self.mov(reg, arg)
         }
     }
 
+    /// Defines the TinyRAM "store" instruction
     fn store(&mut self, arg: &Argument, reg: &Register) {
         // Store contents of register reg at the address arg
         let addr = self.resolve(arg);
@@ -506,6 +577,7 @@ impl TinyVM {
         self.state.memory[addr] = value;
     }
 
+    /// Defines the TinyRAM "load" instruction
     fn load(&mut self, reg: &Register, arg: &Argument) {
         let addr = self.resolve(arg);
         let value = self.read_reg(reg);
@@ -515,12 +587,5 @@ impl TinyVM {
         }
 
         self.state.memory[addr] = value;
-    }
-
-    fn read_reg(&self, reg: &Register) -> usize {
-        self.state.registers[reg.index as usize]
-    }
-    fn write_reg(&mut self, reg: &Register, val: usize) {
-        self.state.registers[reg.index as usize] = val;
     }
 }
