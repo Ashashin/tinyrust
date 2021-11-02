@@ -10,10 +10,8 @@ mod tests {
 
     #[test]
     fn run_fibo() -> Result<(), Report> {
-        let update_hash = |_: &[u8]| {};
-
         let mut vm = Parser::load_program(&String::from("../assets/fib.tr"))?;
-        let result = vm.run_vm(vec![39], update_hash)?;
+        let result = vm.run_vm(vec![39])?;
         println!("Result = {}", result);
 
         assert_eq!(result, 63245986);

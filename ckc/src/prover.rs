@@ -179,7 +179,7 @@ impl InstrumentedVM {
         let mut hasher = Sha1::new();
         hasher.update(&self.program);
         let update_hash = |s: &[u8]| hasher.update(s);
-        let output = self.vm.run_vm(vec![input], update_hash)?;
+        let output = self.vm.run_vm_with_callback(vec![input], update_hash)?;
         let hash = hasher.finalize();
         let hash = hash.as_slice().to_vec();
         self.vm.reset_state();

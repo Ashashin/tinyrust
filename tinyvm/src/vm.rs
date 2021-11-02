@@ -174,8 +174,17 @@ impl TinyVM {
         Ok(self.result)
     }
 
+    /// Run the VM with the selected input
+    pub fn run_vm(&mut self, input: Vec<usize>) -> Result<usize, Report> {
+        self.run_vm_with_callback(input, |_: &[u8]| {})
+    }
+
     /// Run the VM with a callback and the selected input
-    pub fn run_vm<F>(&mut self, input: Vec<usize>, callback: F) -> Result<usize, Report>
+    pub fn run_vm_with_callback<F>(
+        &mut self,
+        input: Vec<usize>,
+        callback: F,
+    ) -> Result<usize, Report>
     where
         F: FnMut(&[u8]),
     {
