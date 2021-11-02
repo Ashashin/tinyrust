@@ -132,6 +132,26 @@ impl TinyVM {
         Ok(self.result)
     }
 
+    pub fn run_vm<F>(&mut self, input: Vec<usize>, callback: F) -> Result<usize, Report>
+    where
+        F: FnMut(&[u8]),
+    {
+        self.load_tape(input);
+
+        info!("✨ All good to go! ✨");
+        match self.run(callback)? {
+            0 => {
+                info!("✨ TinyVM terminated without error ✨");
+                self.display_state();
+
+                match self.output() {
+                    Some(&value) => Ok(value),
+                    _ => Err(eyre!("No output!")),
+                }
+            }
+            x => Err(eyre!("🔥 Program terminated with error code {} 🔥", x)),
+        }
+    }
     pub fn reset_state(&mut self) {
         self.state.running = false;
         self.state.pc = 0;

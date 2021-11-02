@@ -6,14 +6,14 @@ pub mod verifier;
 mod tests {
     use crate::*;
     use color_eyre::Report;
-    use tinyvm::{parser::Parser, run_vm};
+    use tinyvm::parser::Parser;
 
     #[test]
     fn run_fibo() -> Result<(), Report> {
         let update_hash = |_: &[u8]| {};
 
         let mut vm = Parser::load_program(&String::from("../assets/fib.tr"))?;
-        let result = run_vm(&mut vm, vec![39], update_hash)?;
+        let result = vm.run_vm(vec![39], update_hash)?;
         println!("Result = {}", result);
 
         assert_eq!(result, 63245986);

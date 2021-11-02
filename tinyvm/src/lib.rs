@@ -1,4 +1,4 @@
-use color_eyre::{eyre::eyre, Report};
+use color_eyre::Report;
 use sha1::{Digest, Sha1};
 use structopt::StructOpt;
 use tracing::info;
@@ -50,7 +50,7 @@ pub fn from_cli() -> Result<(), Report> {
     let update_hash = |s: &[u8]| hasher.update(s);
 
     // Run program
-    let output = run_vm(&mut tinyvm, input, update_hash)?;
+    let output = tinyvm.run_vm(input, update_hash)?;
 
     // Finalize hashing and write to file
     let hash = hasher.finalize();
@@ -58,25 +58,4 @@ pub fn from_cli() -> Result<(), Report> {
     info!("output: {:?}, hash: {:?}", output, hash);
 
     Ok(())
-}
-
-pub fn run_vm<F>(tinyvm: &mut TinyVM, input: Vec<usize>, callback: F) -> Result<usize, Report>
-where
-    F: FnMut(&[u8]),
-{
-    tinyvm.load_tape(input);
-
-    info!("✨ All good to go! ✨");
-    match tinyvm.run(callback)? {
-        0 => {
-            info!("✨ TinyVM terminated without error ✨");
-            tinyvm.display_state();
-
-            match tinyvm.output() {
-                Some(&value) => Ok(value),
-                _ => Err(eyre!("No output!")),
-            }
-        }
-        x => Err(eyre!("🔥 Program terminated with error code {} 🔥", x)),
-    }
 }

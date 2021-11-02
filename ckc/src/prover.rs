@@ -1,6 +1,6 @@
 use color_eyre::Report;
 use std::{fmt::Debug, ops::Range, path::Path, time::Instant};
-use tinyvm::{parser::Parser, run_vm, TinyVM};
+use tinyvm::{parser::Parser, TinyVM};
 
 use crate::stats::{compute_delta_u, compute_v_min};
 use bitvec::prelude::*;
@@ -179,7 +179,7 @@ impl InstrumentedVM {
         let mut hasher = Sha1::new();
         hasher.update(&self.program);
         let update_hash = |s: &[u8]| hasher.update(s);
-        let output = run_vm(&mut self.vm, vec![input], update_hash)?;
+        let output = self.vm.run_vm(vec![input], update_hash)?;
         let hash = hasher.finalize();
         let hash = hash.as_slice().to_vec();
         self.vm.reset_state();
