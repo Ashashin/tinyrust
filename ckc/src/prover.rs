@@ -44,7 +44,7 @@ pub struct Proof {
 
 impl Prover {
     pub fn new(params: ProverParams) -> Self {
-        assert(params.kappa < 160);
+        assert!(params.kappa < 160);
         Self { params }
     }
 

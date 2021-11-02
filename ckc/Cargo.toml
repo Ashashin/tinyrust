@@ -4,7 +4,6 @@ name = "ckc"
 version = "0.1.0"
 
 [dependencies]
-GSL = "6.0.0"
 bitvec = "0.22.3"
 color-eyre = "0.5.11"
 rayon = "1.5.1"
