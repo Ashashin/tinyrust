@@ -408,12 +408,10 @@ impl Parser {
     }
 
     fn parse_register(s: &str) -> Option<Register> {
-        match Self::starts_with(s, 'r') {
-            Some(_) => match s[1..].parse::<u16>() {
-                Ok(index) => Some(Register { index }),
-                _ => None,
-            },
-            _ => None,
+        if Self::starts_with(s, 'r') {
+            s[1..].parse::<u16>().map(|index| Register { index }).ok()
+        } else {
+            None
         }
     }
 
@@ -426,9 +424,10 @@ impl Parser {
     }
 
     fn parse_label(line: &str) -> Option<String> {
-        match Self::ends_with(line, ':') {
-            Some(_) => Self::parse_label_ident(&line[..line.len() - 1]),
-            _ => None,
+        if Self::ends_with(line, ':') {
+            Self::parse_label_ident(&line[..line.len() - 1])
+        } else {
+            None
         }
     }
 
@@ -445,33 +444,24 @@ impl Parser {
     }
 
     fn parse_comment(line: &str) -> Option<()> {
-        Self::starts_with(line, ';')
+        if Self::starts_with(line, ';') {
+            Some(())
+        } else {
+            None
+        }
     }
-
-    fn starts_with(line: &str, c: char) -> Option<()> {
+    fn starts_with(line: &str, c: char) -> bool {
         match line.chars().next() {
-            Some(x) => {
-                if x == c {
-                    Some(())
-                } else {
-                    None
-                }
-            }
-            _ => None,
+            Some(x) => x == c,
+            None => false,
         }
     }
 
-    fn ends_with(line: &str, c: char) -> Option<()> {
+    fn ends_with(line: &str, c: char) -> bool {
         let n = line.len() - 1;
         match line.chars().nth(n) {
-            Some(x) => {
-                if x == c {
-                    Some(())
-                } else {
-                    None
-                }
-            }
-            _ => None,
+            Some(x) => x == c,
+            None => false,
         }
     }
 
