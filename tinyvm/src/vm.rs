@@ -17,6 +17,17 @@ struct State {
 }
 
 impl State {
+    fn init(program: Vec<Instruction>, register_nb: usize) -> Self {
+        Self {
+            running: false,
+            pc: 0,
+            flag: false,
+            registers: vec![0; register_nb],
+            program,
+            tape: vec![],
+            memory: vec![],
+        }
+    }
     fn process_state<F>(&self, func: &mut F)
     where
         F: FnMut(&[u8]),
@@ -31,6 +42,16 @@ impl State {
         for el in self.memory.iter() {
             func(&el.to_be_bytes());
         }
+    }
+    fn reset(&mut self) {
+        let reg = self.registers.len();
+
+        self.running = false;
+        self.pc = 0;
+        self.flag = false;
+        self.registers = vec![0; reg];
+        self.tape = vec![];
+        self.memory = vec![];
     }
 }
 #[derive(Debug)]
@@ -47,15 +68,7 @@ impl TinyVM {
         program: Vec<Instruction>,
         resolved_labels: HashMap<String, usize>,
     ) -> Self {
-        let state = State {
-            running: false,
-            pc: 0,
-            flag: false,
-            registers: vec![0; params.registers.into()],
-            program,
-            tape: vec![],
-            memory: vec![],
-        };
+        let state = State::init(program, params.registers.into());
 
         Self {
             params,
@@ -153,12 +166,8 @@ impl TinyVM {
         }
     }
     pub fn reset_state(&mut self) {
-        self.state.running = false;
-        self.state.pc = 0;
-        self.state.flag = false;
-        self.state.registers = vec![0; self.params.registers.into()];
-        self.state.tape = vec![];
-        self.state.memory = vec![];
+        self.state.reset();
+    }
     }
 
     pub fn execute(&mut self, instr: Instruction) -> Result<usize, Report> {
