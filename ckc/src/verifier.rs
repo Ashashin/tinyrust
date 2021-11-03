@@ -57,7 +57,7 @@ impl Verifier {
     /// Validation for fixed effort
     fn check_proof_fixed_effort(&self, epsilon: f64) -> ProofReport {
         let proof = &self.proof;
-        let u = proof.params.input_domain.end - proof.params.input_domain.start;
+        let u = proof.params.input_domain.end - proof.params.input_domain.start + 1;
         let kappa = proof.params.kappa;
 
         let v = proof.params.v;
@@ -75,7 +75,7 @@ impl Verifier {
     /// Validation for best effort
     fn check_proof_best_effort(&self) -> ProofReport {
         let proof = &self.proof;
-        let u = proof.params.input_domain.end - proof.params.input_domain.start;
+        let u = proof.params.input_domain.end - proof.params.input_domain.start + 1;
         let kappa = proof.params.kappa;
 
         let v = proof.vset.len();
@@ -94,7 +94,7 @@ impl Verifier {
     /// Validation for overtesting
     fn check_proof_overtesting(&self) -> ProofReport {
         let proof = &self.proof;
-        let u = proof.params.input_domain.end - proof.params.input_domain.start;
+        let u = proof.params.input_domain.end - proof.params.input_domain.start + 1;
         let kappa = proof.params.kappa;
 
         let v = proof.vset.len();
