@@ -151,12 +151,14 @@ impl Parser {
                 continue;
             } else if let Some(instr) = Self::parse_instruction(line) {
                 instructions.push(instr);
+                continue;
             } else if let Some(label) = Self::parse_label(line) {
                 labels.push(Label {
                     ident: label,
                     address: instructions.len(),
                     line: idx + 2,
                 });
+                continue;
             }
 
             return Err(eyre!("Line {}: Invalid content '{}'", idx + 2, line));
