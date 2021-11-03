@@ -68,13 +68,13 @@ pub struct Proof {
 #[derive(Serialize)]
 pub struct ProofReport {
     /// The proof being reported
-    proof: Proof,
+    pub proof: Proof,
     /// The probability of getting an acceptable proof
-    eta: f64,
+    pub eta: f64,
     /// The probability of the proof being valid
-    q: f64,
+    pub q: f64,
     /// The conclusion of the report on whether the proof should be accepted
-    valid: bool,
+    pub valid: bool,
 }
 
 impl ProofReport {
