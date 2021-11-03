@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use crate::parser::{Argument, Instruction, Params, Register};
 
-/// Struct reprensenting the current state of the tinyRAM VM
+/// Struct reprensenting the current state of the `TinyRAM` VM
 #[derive(Debug)]
 struct State {
     /// Indicates is the VM is currently running
@@ -47,10 +47,10 @@ impl State {
 
         func(&[self.flag as u8]);
 
-        for el in self.registers.iter() {
+        for el in &self.registers {
             func(&el.to_be_bytes());
         }
-        for el in self.memory.iter() {
+        for el in &self.memory {
             func(&el.to_be_bytes());
         }
     }
@@ -68,7 +68,7 @@ impl State {
     }
 }
 
-/// Structure representing the tinyRAM VM
+/// Structure representing the `TinyRAM` VM
 #[derive(Debug)]
 pub struct TinyVM {
     /// VM params
@@ -168,7 +168,7 @@ impl TinyVM {
         self.start();
         while self.state.running {
             self.step()?;
-            self.state.process_state(&mut callback)
+            self.state.process_state(&mut callback);
         }
 
         Ok(self.result)
@@ -285,7 +285,7 @@ impl TinyVM {
             // Answer operation
             Instruction::Answer(arg) => {
                 next_pc -= 1;
-                self.answer(&arg)
+                self.answer(&arg);
             }
         }
 
@@ -302,11 +302,11 @@ impl TinyVM {
     }
 
     /// Defines the segfault instruction
-    fn segfault() -> Instruction {
+    const fn segfault() -> Instruction {
         Instruction::Answer(Argument::Imm(1))
     }
 
-    /// Defines the TinyRAM "and" instruction
+    /// Defines the `TinyRAM` "and" instruction
     fn and(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
@@ -318,7 +318,7 @@ impl TinyVM {
         self.state.flag = zero;
     }
 
-    /// Defines the TinyRAM "or" instruction
+    /// Defines the `TinyRAM` "or" instruction
     fn or(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
@@ -330,7 +330,7 @@ impl TinyVM {
         self.state.flag = zero;
     }
 
-    /// Defines the TinyRAM "xor" instruction
+    /// Defines the `TinyRAM` "xor" instruction
     fn xor(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
@@ -342,7 +342,7 @@ impl TinyVM {
         self.state.flag = zero;
     }
 
-    /// Defines the TinyRAM "not" instruction
+    /// Defines the `TinyRAM` "not" instruction
     fn not(&mut self, reg: &Register, arg: &Argument) {
         let value = self.resolve(arg);
 
@@ -353,7 +353,7 @@ impl TinyVM {
         self.state.flag = zero;
     }
 
-    /// Defines the TinyRAM "add" instruction
+    /// Defines the `TinyRAM` "add" instruction
     fn add(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let msb_mask = 1 << (self.params.word_size - 1);
         let value_mask = (1 << self.params.word_size) - 1;
@@ -368,7 +368,7 @@ impl TinyVM {
         self.state.flag = carry;
     }
 
-    /// Defines the TinyRAM "sub" instruction
+    /// Defines the `TinyRAM` "sub" instruction
     fn sub(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let msb_mask = 1 << (self.params.word_size - 1);
         let value_mask = (1 << self.params.word_size) - 1;
@@ -383,7 +383,7 @@ impl TinyVM {
         self.state.flag = !carry;
     }
 
-    /// Defines the TinyRAM "mull" instruction
+    /// Defines the `TinyRAM` "mull" instruction
     fn mull(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value_mask = (1 << self.params.word_size) - 1;
 
@@ -398,7 +398,7 @@ impl TinyVM {
         self.state.flag = carry;
     }
 
-    /// Defines the TinyRAM "udiv" instruction
+    /// Defines the `TinyRAM` "udiv" instruction
     fn udiv(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value_mask = (1 << self.params.word_size) - 1;
 
@@ -415,7 +415,7 @@ impl TinyVM {
         self.state.flag = flag;
     }
 
-    /// Defines the TinyRAM "umod" instruction
+    /// Defines the `TinyRAM` "umod" instruction
     fn umod(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value_mask = (1 << self.params.word_size) - 1;
 
@@ -432,7 +432,7 @@ impl TinyVM {
         self.state.flag = flag;
     }
 
-    /// Defines the TinyRAM "shl" instruction
+    /// Defines the `TinyRAM` "shl" instruction
     fn shl(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
         let value2 = self.read_reg(reg2);
@@ -446,7 +446,7 @@ impl TinyVM {
         self.state.flag = carry;
     }
 
-    /// Defines the TinyRAM "shr" instruction
+    /// Defines the `TinyRAM` "shr" instruction
     fn shr(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
         let value2 = self.read_reg(reg2);
@@ -460,7 +460,7 @@ impl TinyVM {
         self.state.flag = carry;
     }
 
-    /// Defines the TinyRAM "cmpe" instruction
+    /// Defines the `TinyRAM` "cmpe" instruction
     fn cmpe(&mut self, reg: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
         let value2 = self.read_reg(reg);
@@ -469,7 +469,7 @@ impl TinyVM {
         self.state.flag = equal;
     }
 
-    /// Defines the TinyRAM "cmpa" instruction
+    /// Defines the `TinyRAM` "cmpa" instruction
     fn cmpa(&mut self, reg: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
         let value2 = self.read_reg(reg);
@@ -478,7 +478,7 @@ impl TinyVM {
         self.state.flag = above;
     }
 
-    /// Defines the TinyRAM "cmpae" instruction
+    /// Defines the `TinyRAM` "cmpae" instruction
     fn cmpae(&mut self, reg: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
         let value2 = self.read_reg(reg);
@@ -487,7 +487,7 @@ impl TinyVM {
         self.state.flag = above;
     }
 
-    /// Defines the TinyRAM "cmpg" instruction
+    /// Defines the `TinyRAM` "cmpg" instruction
     fn cmpg(&mut self, reg: &Register, arg: &Argument) {
         let value1 = Self::to_signed(self.resolve(arg) as u64);
         let value2 = Self::to_signed(self.read_reg(reg) as u64);
@@ -496,7 +496,7 @@ impl TinyVM {
         self.state.flag = above;
     }
 
-    /// Defines the TinyRAM "cmpge" instruction
+    /// Defines the `TinyRAM` "cmpge" instruction
     fn cmpge(&mut self, reg: &Register, arg: &Argument) {
         let value1 = Self::to_signed(self.resolve(arg) as u64);
         let value2 = Self::to_signed(self.read_reg(reg) as u64);
@@ -505,28 +505,28 @@ impl TinyVM {
         self.state.flag = above;
     }
 
-    /// Defines the TinyRAM "amswer" instruction
+    /// Defines the `TinyRAM` "amswer" instruction
     fn answer(&mut self, arg: &Argument) {
         let retval = self.resolve(arg);
         self.result = retval;
         self.stop();
     }
 
-    /// Defines the TinyRAM "jmp" instruction
+    /// Defines the `TinyRAM` "jmp" instruction
     fn jmp(&mut self, arg: &Argument) -> usize {
         self.resolve(arg)
     }
 
-    /// Defines the TinyRAM "cjmp" instruction
+    /// Defines the `TinyRAM` "cjmp" instruction
     fn cjmp(&mut self, arg: &Argument) -> usize {
-        if !self.state.flag {
-            self.state.pc + 1
-        } else {
+        if self.state.flag {
             self.jmp(arg)
+        } else {
+            self.state.pc + 1
         }
     }
 
-    /// Defines the TinyRAM "cnjmp" instruction
+    /// Defines the `TinyRAM` "cnjmp" instruction
     fn cnjmp(&mut self, arg: &Argument) -> usize {
         if self.state.flag {
             self.state.pc + 1
@@ -535,7 +535,7 @@ impl TinyVM {
         }
     }
 
-    /// Defines the TinyRAM "read" instruction
+    /// Defines the `TinyRAM` "read" instruction
     fn read(&mut self, reg: &Register, arg: &Argument) {
         let tape = self.resolve(arg);
 
@@ -543,12 +543,12 @@ impl TinyVM {
 
         let value = match tape {
             0 => {
-                if !has_tape {
-                    self.state.flag = true;
-                    0
-                } else {
+                if has_tape {
                     self.state.flag = false;
                     self.state.tape.pop().unwrap()
+                } else {
+                    self.state.flag = true;
+                    0
                 }
             }
             _ => {
@@ -560,20 +560,20 @@ impl TinyVM {
         self.write_reg(reg, value);
     }
 
-    /// Defines the TinyRAM "mov" instruction
+    /// Defines the `TinyRAM` "mov" instruction
     fn mov(&mut self, reg: &Register, arg: &Argument) {
         let value = self.resolve(arg);
         self.write_reg(reg, value);
     }
 
-    /// Defines the TinyRAM "cmov" instruction
+    /// Defines the `TinyRAM` "cmov" instruction
     fn cmov(&mut self, reg: &Register, arg: &Argument) {
         if self.state.flag {
-            self.mov(reg, arg)
+            self.mov(reg, arg);
         }
     }
 
-    /// Defines the TinyRAM "store" instruction
+    /// Defines the `TinyRAM` "store" instruction
     fn store(&mut self, arg: &Argument, reg: &Register) {
         // Store contents of register reg at the address arg
         let addr = self.resolve(arg);
@@ -586,7 +586,7 @@ impl TinyVM {
         self.state.memory[addr] = value;
     }
 
-    /// Defines the TinyRAM "load" instruction
+    /// Defines the `TinyRAM` "load" instruction
     fn load(&mut self, reg: &Register, arg: &Argument) {
         let addr = self.resolve(arg);
         let value = self.read_reg(reg);

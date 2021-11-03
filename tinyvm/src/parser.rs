@@ -35,7 +35,7 @@ pub struct Label {
     line: usize,
 }
 
-/// tinyRAM VM params
+/// `TinyRAM` VM params
 #[derive(Debug, Copy, Clone)]
 pub struct Params {
     /// Version of the tinyRAM spec
@@ -57,7 +57,7 @@ pub enum Argument {
     Label(String),
 }
 
-/// Enum listing all instructions of the tinyRAM VM
+/// Enum listing all instructions of the `TinyRAM` VM
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Instruction {
     And(Register, Register, Argument),
@@ -94,7 +94,7 @@ pub enum Instruction {
     Answer(Argument),
 }
 
-/// Parser form the tinyRAM programs
+/// Parser form the `TinyRAM` programs
 pub struct Parser;
 
 impl Parser {
@@ -110,7 +110,7 @@ impl Parser {
         for (_idx, line) in lines.enumerate() {
             let line = line.unwrap();
             let value = line.parse::<u64>()? as usize;
-            tape.push(value)
+            tape.push(value);
         }
 
         info!("Tape loaded with {} entries", tape.len());
@@ -118,7 +118,7 @@ impl Parser {
         Ok(tape)
     }
 
-    /// Parse tinyRAM program into a tinyRAM VM
+    /// Parse `TinyRAM` program into a `TinyRAM` VM
     pub fn load_program<P>(filename: &P) -> Result<TinyVM, Report>
     where
         P: AsRef<Path> + Debug,
@@ -157,9 +157,9 @@ impl Parser {
                     address: instructions.len(),
                     line: idx + 2,
                 });
-            } else {
-                return Err(eyre!("Line {}: Invalid content '{}'", idx + 2, line));
             }
+
+            return Err(eyre!("Line {}: Invalid content '{}'", idx + 2, line));
         }
 
         // Resolution
@@ -169,7 +169,7 @@ impl Parser {
         Ok(TinyVM::new(params, instructions, resolved_labels))
     }
 
-    /// Check if tinyRAM params are valid
+    /// Check if `RinyRAM` params are valid
     #[allow(clippy::float_cmp)]
     fn check_params(params: Params) -> Result<(), Report> {
         if params.version != 1.0 {
@@ -200,13 +200,13 @@ impl Parser {
         let check_arg = |arg: &Argument| match arg {
             Argument::Reg(reg) => check_reg(reg),
             Argument::Label(ident) => {
-                if !resolved_labels.contains_key(ident as &str) {
-                    Err(eyre!("Undefined label '{}'", ident))
-                } else {
+                if resolved_labels.contains_key(ident as &str) {
                     Ok(())
+                } else {
+                    Err(eyre!("Undefined label '{}'", ident))
                 }
             }
-            _ => Ok(()),
+            Argument::Imm(_) => Ok(()),
         };
 
         for instr in instructions {
@@ -258,7 +258,7 @@ impl Parser {
 
         let mut hashmap = HashMap::new();
         for label in labels {
-            let duplicate = hashmap.insert(label.ident.to_owned(), label.address);
+            let duplicate = hashmap.insert(label.ident.clone(), label.address);
             if duplicate.is_some() {
                 return Err(eyre!(
                     "Line {}: Duplicate label: '{}'",
@@ -270,7 +270,7 @@ impl Parser {
         Ok(hashmap)
     }
 
-    /// Read the timyRAM VM params from the first line of the program file
+    /// Read the `TimyRAM` VM params from the first line of the program file
     fn read_params(first_line: &str) -> Result<Params, Report> {
         let parts: Vec<_> = first_line.split_whitespace().collect();
 
@@ -320,7 +320,6 @@ impl Parser {
         }
 
         let instr = match nargs {
-            0 => return None,
             1 => {
                 let arg = match Self::parse_argument(&operands[0]) {
                     Some(x) => x,

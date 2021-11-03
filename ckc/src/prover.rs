@@ -47,7 +47,7 @@ impl Prover {
 
         for i in self.params.input_domain.clone() {
             let run_result = vm.run(i).unwrap();
-            if self.select_witness(run_result) {
+            if self.select_witness(&run_result) {
                 vset.push(i);
             }
             if vset.len() > threshold {
@@ -76,7 +76,7 @@ impl Prover {
 
         domain.for_each(|i| {
             let run_result = vm.run(i).unwrap();
-            if self.select_witness(run_result) {
+            if self.select_witness(&run_result) {
                 vset.push(i);
             }
         });
@@ -102,7 +102,7 @@ impl Prover {
 
         extended_domain.clone().for_each(|i| {
             let run_result = vm.run(i).unwrap();
-            if self.select_witness(run_result) {
+            if self.select_witness(&run_result) {
                 vset.push(i);
             }
         });
@@ -115,7 +115,7 @@ impl Prover {
     }
 
     /// Picking the witness based on the program result
-    fn select_witness(&self, run_result: RunResult) -> bool {
+    fn select_witness(&self, run_result: &RunResult) -> bool {
         if run_result.output != self.params.expected_output {
             return false;
         }
@@ -124,6 +124,6 @@ impl Prover {
             return false;
         }
 
-        validate_hash(run_result.hash, self.params.kappa as usize)
+        validate_hash(&run_result.hash, self.params.kappa as usize)
     }
 }

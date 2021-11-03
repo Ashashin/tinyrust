@@ -152,7 +152,5 @@ mod tests {
         };
 
         fake_proof.display();
-
-        println!("JSON: {}", fake_proof.export());
     }
 }

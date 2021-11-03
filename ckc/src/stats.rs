@@ -33,11 +33,13 @@ pub fn compute_delta_u(eta0: f64, kappa: u64, u: usize, v: usize) -> usize {
     let alpha = erfc_inv(2.0 * eta0);
 
     ((u as f64)
-        - (alpha
-            * (alpha * (1.0 - p)
-                + ((1.0 - p) * (alpha * alpha * (1.0 - p) + 2.0 * (v as f64))).sqrt())
-            + (v as f64))
-            / p) as usize
+        - alpha.mul_add(
+            alpha.mul_add(
+                1.0 - p,
+                ((1.0 - p) * (alpha * alpha).mul_add(1.0 - p, 2.0 * (v as f64))).sqrt(),
+            ),
+            v as f64,
+        ) / p) as usize
 }
 
 /// Compute the minimal number of witness to attain the eta0 threshold
@@ -46,7 +48,7 @@ pub fn compute_v_min(eta0: f64, kappa: u64, u: usize) -> usize {
     let alpha = erfc_inv(2.0 * eta0);
     let beta = u as f64 * p;
 
-    (beta + (beta * (1.0 - p)).sqrt() * alpha) as usize
+    (beta * (1.0 - p)).sqrt().mul_add(alpha, beta) as usize
 }
 
 /// Derivee the probability from the kappa value

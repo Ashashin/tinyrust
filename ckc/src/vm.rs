@@ -48,15 +48,15 @@ impl InstrumentedVM {
         self.vm.reset_state();
 
         Ok(RunResult {
+            hash,
             input,
             output,
-            hash,
         })
     }
 }
 
 /// Validate the output hash
-pub fn validate_hash(hash: Vec<u8>, kappa: usize) -> bool {
+pub fn validate_hash(hash: &[u8], kappa: usize) -> bool {
     for hash_val in hash.view_bits::<Msb0>().iter().take(160 - kappa) {
         if *hash_val {
             return false;

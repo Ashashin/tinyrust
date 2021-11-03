@@ -33,7 +33,7 @@ pub struct Verifier {
 
 impl Verifier {
     /// Create new verifier
-    pub fn new(proof: Proof) -> Self {
+    pub const fn new(proof: Proof) -> Self {
         Self { proof }
     }
 
@@ -135,7 +135,7 @@ impl Verifier {
                         return ValidationResult::IncorrectOutput(res.output);
                     }
 
-                    if !validate_hash(res.hash, proof.params.kappa as usize) {
+                    if !validate_hash(&res.hash, proof.params.kappa as usize) {
                         // Hash does not match expectation
                         return ValidationResult::IncorrectHash;
                     }
