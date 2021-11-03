@@ -26,7 +26,7 @@ impl Prover {
         let start = Instant::now();
         let result = match self.params.strategy {
             ProofStrategy::BestEffort => self.obtain_proof_best_effort(),
-            ProofStrategy::FixedEffort => self.obtain_proof_fixed_effort(),
+            ProofStrategy::FixedEffort(_epsilon) => self.obtain_proof_fixed_effort(),
             ProofStrategy::OverTesting(eta0) => self.obtain_proof_overtesting(eta0),
             ProofStrategy::BestEffortAdaptive(eta0) => self.obtain_proof_bea(eta0),
         };

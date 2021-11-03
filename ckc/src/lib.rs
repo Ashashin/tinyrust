@@ -30,8 +30,7 @@ mod tests {
         let verifier = Verifier::new(proof);
 
         // Check proof
-        let epsilon = 0.99;
-        let result = verifier.check_proof(epsilon);
+        let result = verifier.check_proof();
 
         result.display();
 

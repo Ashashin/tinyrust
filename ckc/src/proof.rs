@@ -6,7 +6,7 @@ use std::ops::Range;
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum ProofStrategy {
     /// Fixed Effort: Verifier check if a specific threshold is obtained
-    FixedEffort,
+    FixedEffort(f64),
     /// Best Effort: Prover gives everything he can
     BestEffort,
     /// Best Effort Adaptive: Prover gives enough to obtain an acceptable proof

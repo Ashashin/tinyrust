@@ -38,10 +38,10 @@ impl Verifier {
     }
 
     /// Validate proof
-    pub fn check_proof(&self, epsilon: f64) -> ProofReport {
+    pub fn check_proof(&self) -> ProofReport {
         let start = Instant::now();
         let result = match self.proof.params.strategy {
-            ProofStrategy::FixedEffort => self.check_proof_fixed_effort(epsilon),
+            ProofStrategy::FixedEffort(epsilon) => self.check_proof_fixed_effort(epsilon),
             ProofStrategy::BestEffort => self.check_proof_best_effort(),
             ProofStrategy::BestEffortAdaptive(_eta0) => self.check_proof_best_effort(),
             ProofStrategy::OverTesting(_eta0) => self.check_proof_overtesting(),
