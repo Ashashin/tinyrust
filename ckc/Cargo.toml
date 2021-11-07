@@ -12,3 +12,6 @@ serde_json = "1.0.68"
 sha-1 = "0.9.8"
 statrs = "0.15.0"
 tinyvm = {path = "../tinyvm"}
+
+[dev-dependencies]
+plotters = "^0.3.1"

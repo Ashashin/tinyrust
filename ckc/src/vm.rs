@@ -7,7 +7,7 @@ use std::{fmt::Debug, path::Path};
 use tinyvm::{parser::Parser, TinyVM};
 
 /// Strucr reprensenting the result of the instrumented VM run
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RunResult {
     /// Hash of the program run
     pub hash: Vec<u8>,
