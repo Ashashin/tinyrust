@@ -39,7 +39,7 @@ impl Prover {
 
     /// Proof for best effort adaptive
     fn obtain_proof_bea(self, eta0: f64) -> Result<Proof, Report> {
-        let u = self.params.input_domain.end - self.params.input_domain.start + 1;
+        let u = self.params.input_domain.end - self.params.input_domain.start;
         let threshold = compute_v_min(eta0, self.params.kappa, u);
 
         let mut vset = vec![];
@@ -93,7 +93,7 @@ impl Prover {
         let start = self.params.input_domain.start;
         let end = self.params.input_domain.end;
 
-        let delta = compute_delta_u(eta0, self.params.kappa, end - start + 1, self.params.v);
+        let delta = compute_delta_u(eta0, self.params.kappa, end - start, self.params.v);
         let extended_domain = start..(end + delta);
 
         let mut vset = vec![];
