@@ -87,8 +87,10 @@ pub enum Instruction {
     CJmp(Argument),
     CnJmp(Argument),
 
-    Store(Argument, Register),
-    Load(Register, Argument),
+    StoreB(Argument, Register),
+    StoreW(Argument, Register),
+    LoadB(Register, Argument),
+    LoadW(Register, Argument),
     Read(Register, Argument),
 
     Answer(Argument),
@@ -222,14 +224,19 @@ impl Parser {
                 Instruction::Not(reg, arg)
                 | Instruction::Mov(reg, arg)
                 | Instruction::CMov(reg, arg)
-                | Instruction::Load(reg, arg)
+                | Instruction::LoadB(reg, arg)
+                | Instruction::LoadW(reg, arg)
                 | Instruction::Read(reg, arg)
                 | Instruction::CmpE(reg, arg)
                 | Instruction::CmpGE(reg, arg)
                 | Instruction::CmpG(reg, arg)
                 | Instruction::CmpA(reg, arg)
                 | Instruction::CmpAE(reg, arg)
-                | Instruction::Store(arg, reg) => {
+                | Instruction::StoreB(arg, reg) => {
+                    check_reg(reg)?;
+                    check_arg(arg)?;
+                }
+                | Instruction::StoreW(arg, reg) => {
                     check_reg(reg)?;
                     check_arg(arg)?;
                 }
@@ -337,7 +344,7 @@ impl Parser {
             }
             2 => {
                 match opcode {
-                    "store" => {
+                    "store.b" => {
                         // Special case
 
                         let arg1 = Self::parse_argument(&operands[0]);
@@ -349,7 +356,22 @@ impl Parser {
                         let arg1 = arg1.unwrap();
                         let arg2 = arg2.unwrap();
 
-                        Instruction::Store(arg1, arg2)
+                        Instruction::StoreB(arg1, arg2)
+                    }
+
+                    "store.w" => {
+                        // Special case
+
+                        let arg1 = Self::parse_argument(&operands[0]);
+                        let arg2 = Self::parse_register(&operands[1]);
+
+                        if arg1.is_none() || arg2.is_none() {
+                            return None;
+                        }
+                        let arg1 = arg1.unwrap();
+                        let arg2 = arg2.unwrap();
+
+                        Instruction::StoreW(arg1, arg2)
                     }
                     _ => {
                         let arg1 = Self::parse_register(&operands[0]);
@@ -370,7 +392,8 @@ impl Parser {
                             "cmpge" => Instruction::CmpGE(arg1, arg2),
                             "mov" => Instruction::Mov(arg1, arg2),
                             "cmov" => Instruction::CMov(arg1, arg2),
-                            "load" => Instruction::Load(arg1, arg2),
+                            "load.b" => Instruction::LoadB(arg1, arg2),
+                            "load.w" => Instruction::LoadW(arg1, arg2),
                             "read" => Instruction::Read(arg1, arg2),
                             _ => return None,
                         }
@@ -458,7 +481,7 @@ impl Parser {
         }
     }
 
-    /// Parse the label indentifier
+    /// Parse the label identifier
     fn parse_label_ident(s: &str) -> Option<String> {
         lazy_static! {
             static ref RE: Regex = Regex::new("_[0-9a-zA-Z_]+").unwrap();
