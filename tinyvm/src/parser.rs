@@ -232,10 +232,7 @@ impl Parser {
                 | Instruction::CmpG(reg, arg)
                 | Instruction::CmpA(reg, arg)
                 | Instruction::CmpAE(reg, arg)
-                | Instruction::StoreB(arg, reg) => {
-                    check_reg(reg)?;
-                    check_arg(arg)?;
-                }
+                | Instruction::StoreB(arg, reg)
                 | Instruction::StoreW(arg, reg) => {
                     check_reg(reg)?;
                     check_arg(arg)?;
@@ -343,88 +340,66 @@ impl Parser {
                 }
             }
             2 => {
+                // For store instructions arguments are swapped
+                let (reg, arg) = match opcode {
+                    "store.b" | "store.w" => (
+                        Self::parse_register(&operands[1]),
+                        Self::parse_argument(&operands[0]),
+                    ),
+                    _ => (
+                        Self::parse_register(&operands[0]),
+                        Self::parse_argument(&operands[1]),
+                    ),
+                };
+
+                if reg.is_none() || arg.is_none() {
+                    return None;
+                }
+                let reg = reg.unwrap();
+                let arg = arg.unwrap();
+
                 match opcode {
-                    "store.b" => {
-                        // Special case
-
-                        let arg1 = Self::parse_argument(&operands[0]);
-                        let arg2 = Self::parse_register(&operands[1]);
-
-                        if arg1.is_none() || arg2.is_none() {
-                            return None;
-                        }
-                        let arg1 = arg1.unwrap();
-                        let arg2 = arg2.unwrap();
-
-                        Instruction::StoreB(arg1, arg2)
-                    }
-
-                    "store.w" => {
-                        // Special case
-
-                        let arg1 = Self::parse_argument(&operands[0]);
-                        let arg2 = Self::parse_register(&operands[1]);
-
-                        if arg1.is_none() || arg2.is_none() {
-                            return None;
-                        }
-                        let arg1 = arg1.unwrap();
-                        let arg2 = arg2.unwrap();
-
-                        Instruction::StoreW(arg1, arg2)
-                    }
-                    _ => {
-                        let arg1 = Self::parse_register(&operands[0]);
-                        let arg2 = Self::parse_argument(&operands[1]);
-
-                        if arg1.is_none() || arg2.is_none() {
-                            return None;
-                        }
-                        let arg1 = arg1.unwrap();
-                        let arg2 = arg2.unwrap();
-
-                        match opcode {
-                            "not" => Instruction::Not(arg1, arg2),
-                            "cmpe" => Instruction::CmpE(arg1, arg2),
-                            "cmpa" => Instruction::CmpA(arg1, arg2),
-                            "cmpae" => Instruction::CmpAE(arg1, arg2),
-                            "cmpg" => Instruction::CmpG(arg1, arg2),
-                            "cmpge" => Instruction::CmpGE(arg1, arg2),
-                            "mov" => Instruction::Mov(arg1, arg2),
-                            "cmov" => Instruction::CMov(arg1, arg2),
-                            "load.b" => Instruction::LoadB(arg1, arg2),
-                            "load.w" => Instruction::LoadW(arg1, arg2),
-                            "read" => Instruction::Read(arg1, arg2),
-                            _ => return None,
-                        }
-                    }
+                    "not" => Instruction::Not(reg, arg),
+                    "cmpe" => Instruction::CmpE(reg, arg),
+                    "cmpa" => Instruction::CmpA(reg, arg),
+                    "cmpae" => Instruction::CmpAE(reg, arg),
+                    "cmpg" => Instruction::CmpG(reg, arg),
+                    "cmpge" => Instruction::CmpGE(reg, arg),
+                    "mov" => Instruction::Mov(reg, arg),
+                    "cmov" => Instruction::CMov(reg, arg),
+                    "load.b" => Instruction::LoadB(reg, arg),
+                    "load.w" => Instruction::LoadW(reg, arg),
+                    "read" => Instruction::Read(reg, arg),
+                    "store.b" => Instruction::StoreW(arg, reg),
+                    "store.w" => Instruction::StoreW(arg, reg),
+                    _ => return None,
                 }
             }
             3 => {
-                let arg1 = Self::parse_register(&operands[0]);
-                let arg2 = Self::parse_register(&operands[1]);
-                let arg3 = Self::parse_argument(&operands[2]);
+                let reg1 = Self::parse_register(&operands[0]);
+                let reg2 = Self::parse_register(&operands[1]);
+                let arg = Self::parse_argument(&operands[2]);
 
-                if arg1.is_none() || arg2.is_none() || arg3.is_none() {
+                if reg1.is_none() || reg2.is_none() || arg.is_none() {
                     return None;
                 }
-                let arg1 = arg1.unwrap();
-                let arg2 = arg2.unwrap();
-                let arg3 = arg3.unwrap();
+                let reg1 = reg1.unwrap();
+                let reg2 = reg2.unwrap();
+                let arg = arg.unwrap();
 
                 match opcode {
-                    "and" => Instruction::And(arg1, arg2, arg3),
-                    "or" => Instruction::Or(arg1, arg2, arg3),
-                    "xor" => Instruction::Xor(arg1, arg2, arg3),
-                    "add" => Instruction::Add(arg1, arg2, arg3),
-                    "sub" => Instruction::Sub(arg1, arg2, arg3),
-                    "mull" => Instruction::MulL(arg1, arg2, arg3),
-                    "umulh" => Instruction::UMulH(arg1, arg2, arg3),
-                    "smulh" => Instruction::SMulH(arg1, arg2, arg3),
-                    "udiv" => Instruction::UDiv(arg1, arg2, arg3),
-                    "umod" => Instruction::UMod(arg1, arg2, arg3),
-                    "shl" => Instruction::Shl(arg1, arg2, arg3),
-                    "shr" => Instruction::Shr(arg1, arg2, arg3),
+                    "and" => Instruction::And(reg1, reg2, arg),
+                    "or" => Instruction::Or(reg1, reg2, arg),
+                    "xor" => Instruction::Xor(reg1, reg2, arg),
+                    "add" => Instruction::Add(reg1, reg2, arg),
+                    "sub" => Instruction::Sub(reg1, reg2, arg),
+                    "mull" => Instruction::MulL(reg1, reg2, arg),
+                    "umulh" => Instruction::UMulH(reg1, reg2, arg),
+                    "smulh" => Instruction::SMulH(reg1, reg2, arg),
+                    "udiv" => Instruction::UDiv(reg1, reg2, arg),
+                    "umod" => Instruction::UMod(reg1, reg2, arg),
+                    "shl" => Instruction::Shl(reg1, reg2, arg),
+                    "shr" => Instruction::Shr(reg1, reg2, arg),
 
                     _ => return None,
                 }
