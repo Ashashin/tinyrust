@@ -19,7 +19,9 @@ struct State {
     /// Represents the program run by the VM
     program: Vec<Instruction>,
     /// Reprensents the tape storing the inputs
-    tape: Vec<usize>,
+    tape1: Vec<usize>,
+    /// Reprensents the tape storing the inputs
+    tape2: Vec<usize>,
     /// Represents the memory of the VM
     memory: Vec<u8>,
 }
@@ -33,7 +35,8 @@ impl State {
             flag: false,
             registers: vec![0; register_nb],
             program,
-            tape: vec![],
+            tape1: vec![],
+            tape2: vec![],
             memory: vec![],
         }
     }
@@ -63,7 +66,8 @@ impl State {
         self.pc = 0;
         self.flag = false;
         self.registers = vec![0; reg];
-        self.tape = vec![];
+        self.tape1 = vec![];
+        self.tape2 = vec![];
         self.memory = vec![];
     }
 }
@@ -98,9 +102,20 @@ impl TinyVM {
         }
     }
 
-    /// Load an input tape into the VM
-    pub fn load_tape(&mut self, tape: Vec<usize>) {
-        self.state.tape = tape;
+    /// Load the input tapes into the VM
+    pub fn load_tapes(&mut self, tape: (Vec<usize>, Vec<usize>)) {
+        self.state.tape1 = tape.0;
+        self.state.tape1 = tape.1;
+    }
+
+    /// Read the next word in the primary input tape
+    fn read_primary_tape(&mut self) -> usize {
+        self.state.tape1.pop().unwrap_or(0)
+    }
+
+    /// Read the next word in the secondary input tape
+    fn read_secondary_tape(&mut self) -> usize {
+        self.state.tape2.pop().unwrap_or(0)
     }
 
     /// Launch the VM
@@ -175,20 +190,20 @@ impl TinyVM {
     }
 
     /// Run the VM with the selected input
-    pub fn run_vm(&mut self, input: Vec<usize>) -> Result<usize, Report> {
+    pub fn run_vm(&mut self, input: (Vec<usize>, Vec<usize>)) -> Result<usize, Report> {
         self.run_vm_with_callback(input, |_: &[u8]| {})
     }
 
     /// Run the VM with a callback and the selected input
     pub fn run_vm_with_callback<F>(
         &mut self,
-        input: Vec<usize>,
+        input: (Vec<usize>, Vec<usize>),
         callback: F,
     ) -> Result<usize, Report>
     where
         F: FnMut(&[u8]),
     {
-        self.load_tape(input);
+        self.load_tapes(input);
 
         info!("✨ All good to go! ✨");
         match self.run(callback)? {
@@ -539,12 +554,16 @@ impl TinyVM {
     /// Defines the `TinyRAM` "read" instruction
     fn read(&mut self, reg: &Register, arg: &Argument) {
         let tape = self.resolve(arg);
-        let has_tape = !self.state.tape.is_empty();
+        let has_tape = (!self.state.tape1.is_empty(), !self.state.tape2.is_empty());
 
-        let value = match (has_tape, tape) {
-            (true, 0) => {
+        let value = match (tape, has_tape) {
+            (0, (true, _)) => {
                 self.state.flag = false;
-                self.state.tape.pop().unwrap()
+                self.read_primary_tape()
+            }
+            (1, (_, true)) => {
+                self.state.flag = false;
+                self.read_secondary_tape()
             }
             _ => {
                 self.state.flag = true;

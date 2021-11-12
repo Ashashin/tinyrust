@@ -37,7 +37,7 @@ pub fn from_cli() -> Result<(), Report> {
     };
 
     // Run program
-    let output = tinyvm.run_vm(input)?;
+    let output = tinyvm.run_vm((input, vec![]))?;
 
     info!("output: {:?}", output);
 
@@ -54,7 +54,7 @@ mod tests {
     #[test]
     fn run_fibo() -> Result<(), Report> {
         let mut vm = Parser::load_program(&String::from("../assets/fib.tr"))?;
-        let result = vm.run_vm(vec![39])?;
+        let result = vm.run_vm((vec![39], vec![]))?;
         println!("Result = {}", result);
 
         assert_eq!(result, 63245986);
@@ -67,7 +67,7 @@ mod tests {
         let update_hash = |s: &[u8]| hasher.update(s);
 
         let mut vm = Parser::load_program(&String::from("../assets/fib.tr"))?;
-        let result = vm.run_vm_with_callback(vec![39], update_hash)?;
+        let result = vm.run_vm_with_callback((vec![39], vec![]), update_hash)?;
 
         let hash = hasher.finalize();
         let expected_output = 63245986;
@@ -86,7 +86,7 @@ mod tests {
         let update_hash = |s: &[u8]| hasher.update(s);
 
         let mut vm = Parser::load_program(&String::from("../assets/collatz_v0.tr"))?;
-        let result = vm.run_vm_with_callback(vec![39], update_hash)?;
+        let result = vm.run_vm_with_callback((vec![39], vec![]), update_hash)?;
 
         let hash = hasher.finalize();
         let expected_output = 0;
