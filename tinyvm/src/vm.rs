@@ -2,7 +2,6 @@ use color_eyre::{eyre::eyre, Report};
 use tracing::info;
 
 use std::collections::HashMap;
-use std::ops::BitAnd;
 
 use crate::parser::{Argument, Instruction, Params, Register};
 
@@ -541,18 +540,12 @@ impl TinyVM {
     /// Defines the `TinyRAM` "read" instruction
     fn read(&mut self, reg: &Register, arg: &Argument) {
         let tape = self.resolve(arg);
-
         let has_tape = !self.state.tape.is_empty();
 
-        let value = match tape {
-            0 => {
-                if has_tape {
-                    self.state.flag = false;
-                    self.state.tape.pop().unwrap()
-                } else {
-                    self.state.flag = true;
-                    0
-                }
+        let value = match (has_tape, tape) {
+            (true, 0) => {
+                self.state.flag = false;
+                self.state.tape.pop().unwrap()
             }
             _ => {
                 self.state.flag = true;
@@ -578,20 +571,20 @@ impl TinyVM {
 
     /// Defines the `TinyRAM` "store.b" instruction
     fn store_b(&mut self, arg: &Argument, reg: &Register) {
-        // Store contents of register reg at the address arg
         let addr = self.resolve(arg);
         let value = self.read_reg(reg);
+        let value_mask = (1 << self.params.word_size) - 1;
+        let result = value & value_mask;
 
         if self.state.memory.len() <= addr {
             self.state.memory.resize(addr + 1, 0);
         }
 
-        self.state.memory[addr] = value;
+        self.state.memory[addr] = result;
     }
 
     /// Defines the `TinyRAM` "store.w" instruction
     fn store_w(&mut self, arg: &Argument, reg: &Register) {
-        // Store contents of register reg at the address arg
         let addr = self.resolve(arg);
         let value = self.read_reg(reg);
 
@@ -605,23 +598,16 @@ impl TinyVM {
     /// Defines the `TinyRAM` "load.b" instruction
     fn load_b(&mut self, reg: &Register, arg: &Argument) {
         let addr = self.resolve(arg);
-        let value = self.read_reg(reg);
+        let val = self.state.memory[addr];
 
-        if self.state.memory.len() <= addr {
-            self.state.memory.resize(addr + 1, 0);
-        }
-
-        self.state.memory[addr] = value.bitand(0xF);
+        self.write_reg(reg, val);
     }
+
     /// Defines the `TinyRAM` "load.w" instruction
     fn load_w(&mut self, reg: &Register, arg: &Argument) {
         let addr = self.resolve(arg);
-        let value = self.read_reg(reg);
+        let val = self.state.memory[addr];
 
-        if self.state.memory.len() <= addr {
-            self.state.memory.resize(addr + 1, 0);
-        }
-
-        self.state.memory[addr] = value;
+        self.write_reg(reg, val);
     }
 }
