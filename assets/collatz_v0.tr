@@ -1,4 +1,4 @@
-; TinyRAM V=1.00 W=63 K=3
+; TinyRAM V=2.00 M=hv W=64 K=3
 ; Compute the collatz sequence
 
 _init: 

@@ -35,6 +35,13 @@ pub struct Label {
     line: usize,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum ArchType {
+    Harvard,
+    VonNeumann,
+    Unknown,
+}
+
 /// `TinyRAM` VM params
 #[derive(Debug, Copy, Clone)]
 pub struct Params {
@@ -44,6 +51,8 @@ pub struct Params {
     pub word_size: u16,
     /// K parameter: Number of registers
     pub registers: u16,
+    /// M parameter: chitecture type of the VM
+    pub arch: ArchType,
 }
 
 /// Enum encompassing all value types
@@ -173,15 +182,21 @@ impl Parser {
         Ok(TinyVM::new(params, instructions, resolved_labels))
     }
 
-    /// Check if `RinyRAM` params are valid
+    /// Check if `TinyRAM` params are valid
     #[allow(clippy::float_cmp)]
     fn check_params(params: Params) -> Result<(), Report> {
-        if params.version != 1.0 {
-            Err(eyre!("Unsupported version: {}", params.version))
-        } else if params.word_size >= 64 {
-            Err(eyre!("Word size cannot exceed 63 bits"))
-        } else {
-            Ok(())
+        if params.version != 2.0 {
+            return Err(eyre!("Unsupported version: {}", params.version));
+        } else if params.word_size % 8 != 0 && params.word_size.is_power_of_two() {
+            return Err(eyre!(
+                "Word size should be a power of two and divisible by 8"
+            ));
+        }
+
+        match params.arch {
+            ArchType::Harvard => Ok(()),
+            ArchType::VonNeumann => Err(eyre!("Tinyrust only supports Harvard architecture (hv)")),
+            ArchType::Unknown => Err(eyre!("Unknown VM architecture")),
         }
     }
 
@@ -280,7 +295,7 @@ impl Parser {
     fn read_params(first_line: &str) -> Result<Params, Report> {
         let parts: Vec<_> = first_line.split_whitespace().collect();
 
-        if parts.len() != 5 {
+        if parts.len() != 6 {
             return Err(eyre!("First line should state machine parameters"));
         } else if parts[0] != ";" {
             return Err(eyre!("First line should be a comment (start by ';')"));
@@ -289,13 +304,20 @@ impl Parser {
         }
 
         let version = parts[2][2..].parse::<f32>()?;
-        let word_size = parts[3][2..].parse::<u16>()?;
-        let registers = parts[4][2..].parse::<u16>()?;
+        let word_size = parts[4][2..].parse::<u16>()?;
+        let registers = parts[5][2..].parse::<u16>()?;
+
+        let arch = match &parts[3][2..] {
+            "hv" => ArchType::Harvard,
+            "vn" => ArchType::VonNeumann,
+            _ => ArchType::Unknown,
+        };
 
         Ok(Params {
             version,
             word_size,
             registers,
+            arch,
         })
     }
 
