@@ -21,7 +21,7 @@ struct State {
     /// Reprensents the tape storing the inputs
     tape: Vec<usize>,
     /// Represents the memory of the VM
-    memory: Vec<usize>,
+    memory: Vec<u8>,
 }
 
 impl State {
@@ -196,18 +196,17 @@ impl TinyVM {
                 info!("✨ TinyVM terminated without error ✨");
                 self.display_state();
 
-                match self.output() {
-                    Some(&value) => Ok(value),
-                    _ => Err(eyre!("No output!")),
-                }
+                Ok(self.output())
             }
             x => Err(eyre!("🔥 Program terminated with error code {} 🔥", x)),
         }
     }
 
     /// Displays the output of the program
-    pub fn output(&self) -> Option<&usize> {
-        self.state.memory.first()
+    pub fn output(&self) -> usize {
+        let val: [u8; 8] = <[u8; 8]>::try_from(&self.state.memory[0..8]).unwrap();
+
+        usize::from_le_bytes(val)
     }
 
     /// Reset the state of the VM to initial state
@@ -580,7 +579,7 @@ impl TinyVM {
             self.state.memory.resize(addr + 1, 0);
         }
 
-        self.state.memory[addr] = result;
+        self.state.memory[addr] = result as u8;
     }
 
     /// Defines the `TinyRAM` "store.w" instruction
@@ -588,26 +587,24 @@ impl TinyVM {
         let addr = self.resolve(arg);
         let value = self.read_reg(reg);
 
-        if self.state.memory.len() <= addr {
-            self.state.memory.resize(addr + 1, 0);
-        }
-
-        self.state.memory[addr] = value;
+        self.state
+            .memory
+            .splice(addr..(addr + 8), value.to_le_bytes());
     }
 
     /// Defines the `TinyRAM` "load.b" instruction
     fn load_b(&mut self, reg: &Register, arg: &Argument) {
         let addr = self.resolve(arg);
-        let val = self.state.memory[addr];
+        let val = self.state.memory[addr] as usize;
 
-        self.write_reg(reg, val);
+        self.write_reg(reg, val as usize);
     }
 
     /// Defines the `TinyRAM` "load.w" instruction
     fn load_w(&mut self, reg: &Register, arg: &Argument) {
         let addr = self.resolve(arg);
-        let val = self.state.memory[addr];
+        let val: [u8; 8] = <[u8; 8]>::try_from(&self.state.memory[addr..(addr + 8)]).unwrap();
 
-        self.write_reg(reg, val);
+        self.write_reg(reg, usize::from_le_bytes(val));
     }
 }
