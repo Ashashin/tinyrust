@@ -105,7 +105,7 @@ impl TinyVM {
     /// Load the input tapes into the VM
     pub fn load_tapes(&mut self, tape: (Vec<usize>, Vec<usize>)) {
         self.state.tape1 = tape.0;
-        self.state.tape1 = tape.1;
+        self.state.tape2 = tape.1;
     }
 
     /// Read the next word in the primary input tape
@@ -372,7 +372,13 @@ impl TinyVM {
     /// Defines the `TinyRAM` "add" instruction
     fn add(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let msb_mask = 1 << (self.params.word_size - 1);
-        let value_mask = (1 << self.params.word_size) - 1;
+
+        // HOTFIX: 2^64 will overflow otherwise
+        let value_mask = if self.params.word_size == 64 {
+            usize::MAX
+        } else {
+            (1 << self.params.word_size) - 1
+        };
 
         let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
@@ -387,12 +393,18 @@ impl TinyVM {
     /// Defines the `TinyRAM` "sub" instruction
     fn sub(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let msb_mask = 1 << (self.params.word_size - 1);
-        let value_mask = (1 << self.params.word_size) - 1;
+
+        // HOTFIX: 2^64 will overflow otherwise
+        let value_mask = if self.params.word_size == 64 {
+            usize::MAX
+        } else {
+            (1 << self.params.word_size) - 1
+        };
 
         let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
 
-        let result = (value1 - value2 + (1 << self.params.word_size)) & value_mask;
+        let result = (value_mask - value2 + value1 + 1) & value_mask;
         let carry = (result & msb_mask) > 0;
 
         self.write_reg(reg1, result);
@@ -401,7 +413,12 @@ impl TinyVM {
 
     /// Defines the `TinyRAM` "mull" instruction
     fn mull(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
-        let value_mask = (1 << self.params.word_size) - 1;
+        // HOTFIX: 2^64 will overflow otherwise
+        let value_mask = if self.params.word_size == 64 {
+            usize::MAX
+        } else {
+            (1 << self.params.word_size) - 1
+        };
 
         let value1 = self.read_reg(reg2);
         let value2 = self.resolve(arg);
@@ -416,7 +433,12 @@ impl TinyVM {
 
     /// Defines the `TinyRAM` "udiv" instruction
     fn udiv(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
-        let value_mask = (1 << self.params.word_size) - 1;
+        // HOTFIX: 2^64 will overflow otherwise
+        let value_mask = if self.params.word_size == 64 {
+            usize::MAX
+        } else {
+            (1 << self.params.word_size) - 1
+        };
 
         let value1 = self.resolve(arg);
 
@@ -433,7 +455,12 @@ impl TinyVM {
 
     /// Defines the `TinyRAM` "umod" instruction
     fn umod(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
-        let value_mask = (1 << self.params.word_size) - 1;
+        // HOTFIX: 2^64 will overflow otherwise
+        let value_mask = if self.params.word_size == 64 {
+            usize::MAX
+        } else {
+            (1 << self.params.word_size) - 1
+        };
 
         let value1 = self.resolve(arg);
 
@@ -452,7 +479,14 @@ impl TinyVM {
     fn shl(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
         let value2 = self.read_reg(reg2);
-        let value_mask = (1 << self.params.word_size) - 1;
+
+        // HOTFIX: 2^64 will overflow otherwise
+        let value_mask = if self.params.word_size == 64 {
+            usize::MAX
+        } else {
+            (1 << self.params.word_size) - 1
+        };
+
         let msb_mask = 1 << (self.params.word_size - 1);
 
         let result = (value2 << value1) & value_mask;
@@ -466,7 +500,14 @@ impl TinyVM {
     fn shr(&mut self, reg1: &Register, reg2: &Register, arg: &Argument) {
         let value1 = self.resolve(arg);
         let value2 = self.read_reg(reg2);
-        let value_mask = (1 << self.params.word_size) - 1;
+
+        // HOTFIX: 2^64 will overflow otherwise
+        let value_mask = if self.params.word_size == 64 {
+            usize::MAX
+        } else {
+            (1 << self.params.word_size) - 1
+        };
+
         let lsb_mask = 1;
 
         let result = (value2 >> value1) & value_mask;
@@ -591,7 +632,14 @@ impl TinyVM {
     fn store_b(&mut self, arg: &Argument, reg: &Register) {
         let addr = self.resolve(arg);
         let value = self.read_reg(reg);
-        let value_mask = (1 << self.params.word_size) - 1;
+
+        // HOTFIX: 2^64 will overflow otherwise
+        let value_mask = if self.params.word_size == 64 {
+            usize::MAX
+        } else {
+            (1 << self.params.word_size) - 1
+        };
+
         let result = value & value_mask;
 
         if self.state.memory.len() <= addr {
@@ -605,6 +653,10 @@ impl TinyVM {
     fn store_w(&mut self, arg: &Argument, reg: &Register) {
         let addr = self.resolve(arg);
         let value = self.read_reg(reg);
+
+        if self.state.memory.len() < addr + 8 {
+            self.state.memory.resize(addr + 8, 0)
+        }
 
         self.state
             .memory
