@@ -142,7 +142,7 @@ impl Parser {
         let params = Self::read_params(&first_line)
             .wrap_err_with(|| "Line 1: Incorrect parameters")
             .with_suggestion(|| {
-                "The first line should be '; TinyRAM V=[version] W=[wordsize] K=[registers]'"
+                "The first line should be '; TinyRAM V=[version] M=[arch] W=[wordsize] K=[registers]'"
             })?;
 
         Self::check_params(params)?;
