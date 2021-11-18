@@ -26,5 +26,5 @@ _odd:
     jmp  _loop              ;
 
 _end:
-    store.w  1, r4            ;
+    store.w  8, r4            ;
     answer 0             
